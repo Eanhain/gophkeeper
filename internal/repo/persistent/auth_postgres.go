@@ -26,7 +26,7 @@ func New(pg *postgres.Postgres, log domain.LoggerI) *AuthRepo {
 func (ps *AuthRepo) RegisterUser(ctx context.Context, user entity.User) error {
 	sql, args, err := ps.Builder.
 		Insert("users").
-		Columns("username", "hash").
+		Columns("username", "password_hash").
 		Values(user.Login, user.Hash).
 		ToSql()
 
@@ -47,7 +47,7 @@ func (ps *AuthRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInpu
 	var orUser entity.User
 
 	sql, args, err := ps.Builder.
-		Select("username", "hash").
+		Select("username", "password_hash").
 		From("users").
 		Where(squirrel.Eq{"username": untrustedUser.Login}).
 		ToSql()
