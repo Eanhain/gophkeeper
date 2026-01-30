@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Eanhain/gophkeeper/domain"
+	"github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/request"
 	"github.com/Eanhain/gophkeeper/internal/entity"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -41,19 +42,19 @@ func (r *V1) LoginJWT(c *fiber.Ctx) error {
 }
 
 func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
-	var user entity.UserInput
+	var user request.UserInput
 	if err := c.BodyParser(&user); err != nil {
 		r.l.Warn("can't parse body for registr %v", err)
 		return fiber.ErrInternalServerError
 	}
-	if err := r.t.RegUser(c.Context(), user); err != nil {
+	if err := r.t.RegUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password}); err != nil {
 		if errors.Is(err, domain.ErrConflict) {
 			return fiber.ErrConflict
 		} else {
 			return fiber.ErrInternalServerError
 		}
 	}
-	if ok, err := r.t.AuthUser(c.Context(), user); err != nil || !ok {
+	if ok, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password}); err != nil || !ok {
 		r.l.Warn("Can't auth user: %v", err)
 		return fiber.ErrInternalServerError
 	}
@@ -70,12 +71,12 @@ func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 }
 
 func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
-	var user entity.UserInput
+	var user request.UserInput
 	if err := c.BodyParser(&user); err != nil {
 		r.l.Warn("can't parse body for registr %v", err)
 		return "", err
 	}
-	if ok, err := r.t.AuthUser(c.Context(), user); err != nil || !ok {
+	if ok, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password}); err != nil || !ok {
 		return "", fmt.Errorf("user not auth %v", user.Login)
 	}
 	return user.Login, c.JSON(fiber.Map{"message": "User authenticated successfully"})
