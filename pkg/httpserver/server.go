@@ -6,11 +6,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/evrone/go-clean-template/pkg/logger"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/sync/errgroup"
 )
+
+type LoggerI interface {
+	Debug(message interface{}, args ...interface{})
+	Info(message string, args ...interface{})
+	Warn(message string, args ...interface{})
+	Error(message interface{}, args ...interface{})
+	Fatal(message interface{}, args ...interface{})
+}
 
 const (
 	_defaultAddr            = ":80"
@@ -33,11 +40,11 @@ type Server struct {
 	writeTimeout    time.Duration
 	shutdownTimeout time.Duration
 
-	logger logger.Interface
+	logger LoggerI
 }
 
 // New -.
-func New(l logger.Interface, opts ...Option) *Server {
+func New(l LoggerI, opts ...Option) *Server {
 	group, ctx := errgroup.WithContext(context.Background())
 	group.SetLimit(1) // Run only one goroutine
 

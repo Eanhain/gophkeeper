@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evrone/go-clean-template/pkg/logger"
+	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -24,7 +24,7 @@ func buildRequestMessage(ctx *fiber.Ctx) string {
 	return result.String()
 }
 
-func Logger(l logger.Interface) func(c *fiber.Ctx) error {
+func Logger(l domain.LoggerI) func(c *fiber.Ctx) error {
 	return func(ctx *fiber.Ctx) error {
 		err := ctx.Next()
 

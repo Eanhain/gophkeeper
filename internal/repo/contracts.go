@@ -4,20 +4,16 @@ package repo
 import (
 	"context"
 
-	"github.com/evrone/go-clean-template/internal/entity"
+	"github.com/Eanhain/gophkeeper/internal/entity"
 )
 
 //go:generate mockgen -source=contracts.go -destination=../usecase/mocks_repo_test.go -package=usecase_test
 
 type (
-	// TranslationRepo -.
-	TranslationRepo interface {
-		Store(context.Context, entity.Translation) error
-		GetHistory(context.Context) ([]entity.Translation, error)
-	}
-
-	// TranslationWebAPI -.
-	TranslationWebAPI interface {
-		Translate(entity.Translation) (entity.Translation, error)
+	// AuthRepo -.
+	AuthRepo interface {
+		RegisterUser(ctx context.Context, users entity.User) error
+		CheckUser(ctx context.Context, users entity.UserInput) (entity.User, error)
+		GetUserID(ctx context.Context, user string) (int, error)
 	}
 )

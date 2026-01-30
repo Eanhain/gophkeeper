@@ -13,11 +13,8 @@ type (
 		HTTP    HTTP
 		Log     Log
 		PG      PG
-		GRPC    GRPC
-		RMQ     RMQ
-		NATS    NATS
-		Metrics Metrics
 		Swagger Swagger
+		JWT     JWT
 	}
 
 	// App -.
@@ -43,32 +40,14 @@ type (
 		URL     string `env:"PG_URL,required"`
 	}
 
-	// GRPC -.
-	GRPC struct {
-		Port string `env:"GRPC_PORT,required"`
-	}
-
-	// RMQ -.
-	RMQ struct {
-		ServerExchange string `env:"RMQ_RPC_SERVER,required"`
-		ClientExchange string `env:"RMQ_RPC_CLIENT,required"`
-		URL            string `env:"RMQ_URL,required"`
-	}
-
-	// NATS -.
-	NATS struct {
-		ServerExchange string `env:"NATS_RPC_SERVER,required"`
-		URL            string `env:"NATS_URL,required"`
-	}
-
-	// Metrics -.
-	Metrics struct {
-		Enabled bool `env:"METRICS_ENABLED" envDefault:"true"`
-	}
-
 	// Swagger -.
 	Swagger struct {
 		Enabled bool `env:"SWAGGER_ENABLED" envDefault:"false"`
+	}
+
+	// JWT -.
+	JWT struct {
+		Secret string `env:"JWT_SECRET" envDefault:"supersecret"`
 	}
 )
 
