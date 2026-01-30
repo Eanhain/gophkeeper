@@ -6,36 +6,36 @@ import (
 	"github.com/Eanhain/gophkeeper/internal/entity"
 )
 
-func (s *SecretsUseCase) GetLoginPassword(ctx context.Context, username string, login string) ([]entity.LoginPassword, error) {
+func (s *SecretsUseCase) GetLoginPasswords(ctx context.Context, username string) ([]entity.LoginPassword, error) {
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.GetLoginPassword(ctx, userID, login)
+	return s.repo.GetLoginPasswords(ctx, userID)
 }
 
-func (s *SecretsUseCase) GetTextSecret(ctx context.Context, username string, title string) ([]entity.TextSecret, error) {
+func (s *SecretsUseCase) GetTextSecrets(ctx context.Context, username string) ([]entity.TextSecret, error) {
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.GetTextSecret(ctx, userID, title)
+	return s.repo.GetTextSecrets(ctx, userID)
 }
 
-func (s *SecretsUseCase) GetBinarySecret(ctx context.Context, username string, filename string) ([]entity.BinarySecret, error) {
+func (s *SecretsUseCase) GetBinarySecrets(ctx context.Context, username string) ([]entity.BinarySecret, error) {
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.GetBinarySecret(ctx, userID, filename)
+	return s.repo.GetBinarySecrets(ctx, userID)
 }
 
-func (s *SecretsUseCase) GetCardSecret(ctx context.Context, username string, cardholder string) ([]entity.CardSecret, error) {
+func (s *SecretsUseCase) GetCardSecrets(ctx context.Context, username string) ([]entity.CardSecret, error) {
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.GetCardSecret(ctx, userID, cardholder)
+	return s.repo.GetCardSecrets(ctx, userID)
 }
 
 func (s *SecretsUseCase) GetAllSecrets(ctx context.Context, username string) (entity.AllSecrets, error) {

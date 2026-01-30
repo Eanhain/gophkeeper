@@ -13,7 +13,7 @@ func (s *SecretsUseCase) PostLoginPassword(ctx context.Context, username string,
 	if err != nil {
 		return err
 	}
-	return s.repo.PostLoginPassword(ctx, entity.LoginPassword{
+	return s.repo.CreateLoginPassword(ctx, entity.LoginPassword{
 		UserID:   userID,
 		Login:    loginPassword.Login,
 		Password: loginPassword.Password,
@@ -26,7 +26,7 @@ func (s *SecretsUseCase) PostTextSecret(ctx context.Context, username string, te
 	if err != nil {
 		return err
 	}
-	return s.repo.PostTextSecret(ctx, entity.TextSecret{
+	return s.repo.CreateTextSecret(ctx, entity.TextSecret{
 		UserID: userID,
 		Title:  textSecret.Title,
 		Body:   textSecret.Body,
@@ -38,7 +38,7 @@ func (s *SecretsUseCase) PostBinarySecret(ctx context.Context, username string, 
 	if err != nil {
 		return err
 	}
-	return s.repo.PostBinarySecret(ctx, entity.BinarySecret{
+	return s.repo.CreateBinarySecret(ctx, entity.BinarySecret{
 		UserID:   userID,
 		Filename: binarySecret.Filename,
 		MimeType: binarySecret.MimeType,
@@ -51,7 +51,7 @@ func (s *SecretsUseCase) PostCardSecret(ctx context.Context, username string, ca
 	if err != nil {
 		return err
 	}
-	return s.repo.PostCardSecret(ctx, entity.CardSecret{
+	return s.repo.CreateCardSecret(ctx, entity.CardSecret{
 		UserID:     userID,
 		Cardholder: cardSecret.Cardholder,
 		Pan:        cardSecret.Pan,

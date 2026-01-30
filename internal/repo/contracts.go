@@ -18,29 +18,41 @@ type (
 		DeleteUser(ctx context.Context, userID int) error
 	}
 
-	PostRepo interface {
-		PostLoginPassword(ctx context.Context, loginPassword entity.LoginPassword) error
-		PostTextSecret(ctx context.Context, textSecret entity.TextSecret) error
-		PostBinarySecret(ctx context.Context, binarySecret entity.BinarySecret) error
-		PostCardSecret(ctx context.Context, cardSecret entity.CardSecret) error
-	}
-
-	GetRepo interface {
-		GetLoginPassword(ctx context.Context, userID int, login string) ([]entity.LoginPassword, error)
-		GetTextSecret(ctx context.Context, userID int, title string) ([]entity.TextSecret, error)
-		GetBinarySecret(ctx context.Context, userID int, filename string) ([]entity.BinarySecret, error)
-		GetCardSecret(ctx context.Context, userID int, cardholder string) ([]entity.CardSecret, error)
-	}
-
-	DeleteRepo interface {
+	// LoginPasswordRepo - репозиторий для работы с логинами/паролями
+	LoginPasswordRepo interface {
+		CreateLoginPassword(ctx context.Context, lp entity.LoginPassword) error
+		GetLoginPasswords(ctx context.Context, userID int) ([]entity.LoginPassword, error)
 		DeleteLoginPassword(ctx context.Context, userID int, login string) error
+	}
+
+	// TextSecretRepo - репозиторий для работы с текстовыми секретами
+	TextSecretRepo interface {
+		CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
+		GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSecret, error)
 		DeleteTextSecret(ctx context.Context, userID int, title string) error
+	}
+
+	// BinarySecretRepo - репозиторий для работы с бинарными секретами
+	BinarySecretRepo interface {
+		CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) error
+		GetBinarySecrets(ctx context.Context, userID int) ([]entity.BinarySecret, error)
 		DeleteBinarySecret(ctx context.Context, userID int, filename string) error
+	}
+
+	// CardSecretRepo - репозиторий для работы с картами
+	CardSecretRepo interface {
+		CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
+		GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSecret, error)
 		DeleteCardSecret(ctx context.Context, userID int, cardholder string) error
 	}
 
-	ShareRepo interface {
-		CheckUser(ctx context.Context, users entity.UserInput) (entity.User, error)
+	// SecretsRepo - комбинированный интерфейс для usecase
+	SecretsRepo interface {
+		LoginPasswordRepo
+		TextSecretRepo
+		BinarySecretRepo
+		CardSecretRepo
 		GetUserID(ctx context.Context, user string) (int, error)
+		GetAllSecrets(ctx context.Context, userID int) (entity.AllSecrets, error)
 	}
 )
