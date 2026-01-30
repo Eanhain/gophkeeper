@@ -51,3 +51,11 @@ func (s *UseCase) RegUser(ctx context.Context, user entity.UserInput) error {
 
 	return err
 }
+
+func (s *UseCase) DeleteUser(ctx context.Context, user entity.UserInput) error {
+	userID, err := s.repo.GetUserID(ctx, user.Login)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteUser(ctx, userID)
+}

@@ -66,7 +66,7 @@ func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 
 	c.Set("Authorization", "Bearer "+tokenJWT)
 
-	return nil
+	return c.JSON(fiber.Map{"message": "User registered successfully"})
 }
 
 func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
@@ -78,5 +78,15 @@ func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
 	if ok, err := r.t.AuthUser(c.Context(), user); err != nil || !ok {
 		return "", fmt.Errorf("user not auth %v", user.Login)
 	}
-	return user.Login, nil
+	return user.Login, c.JSON(fiber.Map{"message": "User authenticated successfully"})
+}
+
+func (r *V1) DeleteUser(c *fiber.Ctx) error {
+	userToken := c.Locals("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	username := claims["login"].(string)
+	if err := r.t.DeleteUser(c.Context(), entity.UserInput{Login: username}); err != nil {
+		return fiber.ErrInternalServerError
+	}
+	return c.JSON(fiber.Map{"message": "User deleted successfully"})
 }

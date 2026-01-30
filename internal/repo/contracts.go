@@ -15,5 +15,6 @@ type (
 		RegisterUser(ctx context.Context, users entity.User) error
 		CheckUser(ctx context.Context, users entity.UserInput) (entity.User, error)
 		GetUserID(ctx context.Context, user string) (int, error)
+		DeleteUser(ctx context.Context, userID int) error
 	}
 )

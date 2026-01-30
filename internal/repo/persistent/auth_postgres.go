@@ -84,3 +84,19 @@ func (ps *AuthRepo) GetUserID(ctx context.Context, username string) (int, error)
 	}
 	return id, nil
 }
+
+func (ps *AuthRepo) DeleteUser(ctx context.Context, userID int) error {
+	sql, args, err := ps.Builder.
+		Delete("users").
+		Where(squirrel.Eq{"id": userID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build sql: %w", err)
+	}
+	tag, err := ps.Pool.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("can't delete user %w, with user id %d", err, userID)
+	}
+	ps.log.Info("User deleted, rows affected: %d, user id: %d", tag.RowsAffected(), userID)
+	return nil
+}

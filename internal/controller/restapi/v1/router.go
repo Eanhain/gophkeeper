@@ -18,4 +18,9 @@ func NewAuthRoutes(apiV1Group fiber.Router, t usecase.AuthUseCase, jwtConf jwtwa
 		authGroup.Post("/register", r.HandlerRegUser)
 		authGroup.Post("/login", r.LoginJWT)
 	}
+
+	{
+		authGroup.Use(jwtware.New(r.jwtConf))
+		authGroup.Delete("/delete-user", r.DeleteUser)
+	}
 }

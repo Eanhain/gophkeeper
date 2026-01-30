@@ -10,9 +10,10 @@ import (
 //go:generate mockgen -source=interfaces.go -destination=./mocks_usecase_test.go -package=usecase_test
 
 type (
-	// Translation -.
+	// AuthUseCase -.
 	AuthUseCase interface {
 		AuthUser(context.Context, entity.UserInput) (bool, error)
 		RegUser(context.Context, entity.UserInput) error
+		DeleteUser(context.Context, entity.UserInput) error
 	}
 )
