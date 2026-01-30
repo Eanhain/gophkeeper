@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
 type (
@@ -54,6 +55,8 @@ type (
 // NewConfig returns app config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
+	godotenv.Load("./.env")
+	godotenv.Load("../../.env")
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
 	}

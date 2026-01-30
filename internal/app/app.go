@@ -30,6 +30,7 @@ func Run(cfg *config.Config) { //nolint: gocyclo,cyclop,funlen,gocritic,nolintli
 	// Use-Case
 	authUseCase := auth.New(
 		persistent.New(pg, l),
+		l,
 	)
 
 	// HTTP Server

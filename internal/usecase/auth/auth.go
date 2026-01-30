@@ -19,9 +19,10 @@ type UseCase struct {
 }
 
 // New -.
-func New(r repo.AuthRepo) *UseCase {
+func New(r repo.AuthRepo, log domain.LoggerI) *UseCase {
 	return &UseCase{
 		repo: r,
+		log:  log,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/Eanhain/gophkeeper/internal/usecase"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
+	fiberLogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 )
 
@@ -22,8 +23,12 @@ import (
 // @host        localhost:8080
 // @BasePath    /v1
 func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, l domain.LoggerI) {
-	// Options
-	app.Use(middleware.Logger(l))
+
+	app.Use(fiberLogger.New(fiberLogger.Config{
+		Format:     `{"ip":"${ip}","method":"${method}","path":"${path}","status":${status},"latency":"${latency}","resBody":${resBody},"time":"${time}"}\n`,
+		TimeFormat: "2006-01-02 15:04:05",
+		TimeZone:   "UTC",
+	}))
 	app.Use(middleware.Recovery(l))
 
 	// Swagger

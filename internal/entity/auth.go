@@ -11,5 +11,5 @@ type UserInput struct {
 
 type User struct {
 	Login string `json:"login" db:"username"`
-	Hash  string `json:"hash" db:"hash"`
+	Hash  string `json:"hash" db:"password_hash"`
 }

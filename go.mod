@@ -86,6 +86,7 @@ require (
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.21.1 // indirect
 	github.com/alecthomas/go-check-sumtype v0.3.1 // indirect
+	github.com/alecthomas/kong v1.13.0
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/alexkohler/nakedret/v2 v2.0.6 // indirect
 	github.com/alexkohler/prealloc v1.0.1 // indirect
@@ -244,6 +245,7 @@ require (
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jjti/go-spancheck v0.6.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/joho/godotenv v1.5.1
 	github.com/julz/importas v0.2.0 // indirect
 	github.com/k0kubun/pp v2.3.0+incompatible // indirect
 	github.com/karamaru-alpha/copyloopvar v1.2.2 // indirect
