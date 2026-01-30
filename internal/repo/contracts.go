@@ -18,3 +18,20 @@ type (
 		DeleteUser(ctx context.Context, userID int) error
 	}
 )
+
+type (
+	SecretsRepo interface {
+		PostLoginPassword(ctx context.Context, loginPassword entity.LoginPassword) error
+		PostTextSecret(ctx context.Context, textSecret entity.TextSecret) error
+		PostBinarySecret(ctx context.Context, binarySecret entity.BinarySecret) error
+		PostCardSecret(ctx context.Context, cardSecret entity.CardSecret) error
+		GetLoginPassword(ctx context.Context, userID int) ([]entity.LoginPassword, error)
+		GetTextSecret(ctx context.Context, userID int) ([]entity.TextSecret, error)
+		GetBinarySecret(ctx context.Context, userID int) ([]entity.BinarySecret, error)
+		GetCardSecret(ctx context.Context, userID int) ([]entity.CardSecret, error)
+		DeleteLoginPassword(ctx context.Context, userID int) error
+		DeleteTextSecret(ctx context.Context, userID int) error
+		DeleteBinarySecret(ctx context.Context, userID int) error
+		DeleteCardSecret(ctx context.Context, userID int) error
+	}
+)
