@@ -1,13 +1,25 @@
-package secrets
+package delPostgres
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/Eanhain/gophkeeper/domain"
+	"github.com/Eanhain/gophkeeper/pkg/postgres"
 	"github.com/Masterminds/squirrel"
 )
 
-func (ps *SecretsRepo) DeleteLoginPassword(ctx context.Context, userID int, login string) error {
+// DeleteRepo -.
+type DeleteRepo struct {
+	*postgres.Postgres
+	log domain.LoggerI
+}
+
+// New -.
+func New(pg *postgres.Postgres, log domain.LoggerI) *DeleteRepo {
+	return &DeleteRepo{pg, log}
+}
+func (ps *DeleteRepo) DeleteLoginPassword(ctx context.Context, userID int, login string) error {
 	sql, args, err := ps.Builder.
 		Delete("user_credentials").
 		Where(squirrel.Eq{"user_id": userID, "login": login}).
@@ -23,7 +35,7 @@ func (ps *SecretsRepo) DeleteLoginPassword(ctx context.Context, userID int, logi
 	return nil
 }
 
-func (ps *SecretsRepo) DeleteTextSecret(ctx context.Context, userID int, title string) error {
+func (ps *DeleteRepo) DeleteTextSecret(ctx context.Context, userID int, title string) error {
 	sql, args, err := ps.Builder.
 		Delete("user_text_items").
 		Where(squirrel.Eq{"user_id": userID, "title": title}).
@@ -39,7 +51,7 @@ func (ps *SecretsRepo) DeleteTextSecret(ctx context.Context, userID int, title s
 	return nil
 }
 
-func (ps *SecretsRepo) DeleteBinarySecret(ctx context.Context, userID int, filename string) error {
+func (ps *DeleteRepo) DeleteBinarySecret(ctx context.Context, userID int, filename string) error {
 	sql, args, err := ps.Builder.
 		Delete("user_binary_items").
 		Where(squirrel.Eq{"user_id": userID, "filename": filename}).
@@ -55,7 +67,7 @@ func (ps *SecretsRepo) DeleteBinarySecret(ctx context.Context, userID int, filen
 	return nil
 }
 
-func (ps *SecretsRepo) DeleteCardSecret(ctx context.Context, userID int, cardholder string) error {
+func (ps *DeleteRepo) DeleteCardSecret(ctx context.Context, userID int, cardholder string) error {
 	sql, args, err := ps.Builder.
 		Delete("user_cards").
 		Where(squirrel.Eq{"user_id": userID, "cardholder": cardholder}).

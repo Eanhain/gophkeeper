@@ -46,5 +46,6 @@ func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, l doma
 	apiV1Group := app.Group("/v1")
 	{
 		v1.NewAuthRoutes(apiV1Group, t, jwtConf, l)
+		v1.NewSecretRoutes(apiV1Group, t, jwtConf, l)
 	}
 }

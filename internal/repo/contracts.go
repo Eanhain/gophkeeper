@@ -17,23 +17,30 @@ type (
 		GetUserID(ctx context.Context, user string) (int, error)
 		DeleteUser(ctx context.Context, userID int) error
 	}
-)
 
-type (
-	SecretsRepo interface {
+	PostRepo interface {
 		PostLoginPassword(ctx context.Context, loginPassword entity.LoginPassword) error
 		PostTextSecret(ctx context.Context, textSecret entity.TextSecret) error
 		PostBinarySecret(ctx context.Context, binarySecret entity.BinarySecret) error
 		PostCardSecret(ctx context.Context, cardSecret entity.CardSecret) error
+	}
 
-		GetLoginPassword(ctx context.Context, userID int) ([]entity.LoginPassword, error)
-		GetTextSecret(ctx context.Context, userID int) ([]entity.TextSecret, error)
-		GetBinarySecret(ctx context.Context, userID int) ([]entity.BinarySecret, error)
-		GetCardSecret(ctx context.Context, userID int) ([]entity.CardSecret, error)
+	GetRepo interface {
+		GetLoginPassword(ctx context.Context, userID int, login string) ([]entity.LoginPassword, error)
+		GetTextSecret(ctx context.Context, userID int, title string) ([]entity.TextSecret, error)
+		GetBinarySecret(ctx context.Context, userID int, filename string) ([]entity.BinarySecret, error)
+		GetCardSecret(ctx context.Context, userID int, cardholder string) ([]entity.CardSecret, error)
+	}
 
-		DeleteLoginPassword(ctx context.Context, userID int) error
-		DeleteTextSecret(ctx context.Context, userID int) error
-		DeleteBinarySecret(ctx context.Context, userID int) error
-		DeleteCardSecret(ctx context.Context, userID int) error
+	DeleteRepo interface {
+		DeleteLoginPassword(ctx context.Context, userID int, login string) error
+		DeleteTextSecret(ctx context.Context, userID int, title string) error
+		DeleteBinarySecret(ctx context.Context, userID int, filename string) error
+		DeleteCardSecret(ctx context.Context, userID int, cardholder string) error
+	}
+
+	ShareRepo interface {
+		CheckUser(ctx context.Context, users entity.UserInput) (entity.User, error)
+		GetUserID(ctx context.Context, user string) (int, error)
 	}
 )

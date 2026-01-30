@@ -9,8 +9,10 @@ import (
 
 	"github.com/Eanhain/gophkeeper/config"
 	"github.com/Eanhain/gophkeeper/internal/controller/restapi"
-	"github.com/Eanhain/gophkeeper/internal/repo/persistent"
+	repoAuth "github.com/Eanhain/gophkeeper/internal/repo/persistent/auth"
+	repoSecrets "github.com/Eanhain/gophkeeper/internal/repo/persistent/secrets"
 	"github.com/Eanhain/gophkeeper/internal/usecase/auth"
+	"github.com/Eanhain/gophkeeper/internal/usecase/secrets"
 	"github.com/Eanhain/gophkeeper/pkg/httpserver"
 	"github.com/Eanhain/gophkeeper/pkg/logger"
 	"github.com/Eanhain/gophkeeper/pkg/postgres"
@@ -29,10 +31,13 @@ func Run(cfg *config.Config) { //nolint: gocyclo,cyclop,funlen,gocritic,nolintli
 
 	// Use-Case
 	authUseCase := auth.New(
-		persistent.New(pg, l),
+		repoAuth.New(pg, l),
 		l,
 	)
-
+	secretsUseCase := secrets.New(
+		repoSecrets.New(pg, l),
+		l,
+	)
 	// HTTP Server
 	httpServer := httpserver.New(l, httpserver.Port(cfg.HTTP.Port), httpserver.Prefork(cfg.HTTP.UsePreforkMode))
 

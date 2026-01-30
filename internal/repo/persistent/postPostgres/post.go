@@ -1,13 +1,26 @@
-package secrets
+package postPostgres
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/Eanhain/gophkeeper/internal/entity"
+	"github.com/Eanhain/gophkeeper/pkg/postgres"
 )
 
-func (ps *SecretsRepo) PostLoginPassword(ctx context.Context, loginPassword entity.LoginPassword) error {
+// PostRepo -.
+type PostRepo struct {
+	*postgres.Postgres
+	log domain.LoggerI
+}
+
+// New -.
+func New(pg *postgres.Postgres, log domain.LoggerI) *PostRepo {
+	return &PostRepo{pg, log}
+}
+
+func (ps *PostRepo) PostLoginPassword(ctx context.Context, loginPassword entity.LoginPassword) error {
 	sql, args, err := ps.Builder.
 		Insert("user_credentials").
 		Columns("user_id", "login", "password_enc", "label").
@@ -24,7 +37,7 @@ func (ps *SecretsRepo) PostLoginPassword(ctx context.Context, loginPassword enti
 	return nil
 }
 
-func (ps *SecretsRepo) PostTextSecret(ctx context.Context, textSecret entity.TextSecret) error {
+func (ps *PostRepo) PostTextSecret(ctx context.Context, textSecret entity.TextSecret) error {
 	sql, args, err := ps.Builder.
 		Insert("user_text_items").
 		Columns("user_id", "title", "body").
@@ -41,7 +54,7 @@ func (ps *SecretsRepo) PostTextSecret(ctx context.Context, textSecret entity.Tex
 	return nil
 }
 
-func (ps *SecretsRepo) PostBinarySecret(ctx context.Context, binarySecret entity.BinarySecret) error {
+func (ps *PostRepo) PostBinarySecret(ctx context.Context, binarySecret entity.BinarySecret) error {
 	sql, args, err := ps.Builder.
 		Insert("user_binary_items").
 		Columns("user_id", "filename", "mime_type", "data").
@@ -58,7 +71,7 @@ func (ps *SecretsRepo) PostBinarySecret(ctx context.Context, binarySecret entity
 	return nil
 }
 
-func (ps *SecretsRepo) PostCardSecret(ctx context.Context, cardSecret entity.CardSecret) error {
+func (ps *PostRepo) PostCardSecret(ctx context.Context, cardSecret entity.CardSecret) error {
 	sql, args, err := ps.Builder.
 		Insert("user_cards").
 		Columns("user_id", "cardholder", "pan_enc", "exp_month", "exp_year", "brand", "last4").

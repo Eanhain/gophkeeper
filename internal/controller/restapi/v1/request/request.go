@@ -39,3 +39,38 @@ type Secret struct {
 	Binary BinarySecret  `json:"binary" db:"binary"`
 	Card   CardSecret    `json:"card" db:"card"`
 }
+
+// DELETE /api/user/login.
+
+type DeleteLoginPassword struct {
+	Login string `json:"login" db:"login"`
+}
+
+type DeleteTextSecret struct {
+	Title string `json:"title" db:"title"`
+}
+
+type DeleteBinarySecret struct {
+	Filename string `json:"filename" db:"filename"`
+}
+
+type DeleteCardSecret struct {
+	Cardholder string `json:"cardholder" db:"cardholder"`
+}
+
+// GET /api/user/login.
+type GetLoginPassword struct {
+	Login string `json:"login" db:"login"`
+}
+
+type GetTextSecret struct {
+	Title string `json:"title" db:"title"`
+}
+
+type GetBinarySecret struct {
+	Filename string `json:"filename" db:"filename"`
+}
+
+type GetCardSecret struct {
+	Cardholder string `json:"cardholder" db:"cardholder"`
+}

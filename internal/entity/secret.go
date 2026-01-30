@@ -29,3 +29,10 @@ type CardSecret struct {
 	Brand      string `json:"brand" db:"brand"`
 	Last4      string `json:"last4" db:"last4"`
 }
+
+type AllSecrets struct {
+	LoginPassword []LoginPassword `json:"login_password" db:"login_password"`
+	TextSecret    []TextSecret    `json:"text_secret" db:"text_secret"`
+	BinarySecret  []BinarySecret  `json:"binary_secret" db:"binary_secret"`
+	CardSecret    []CardSecret    `json:"card_secret" db:"card_secret"`
+}

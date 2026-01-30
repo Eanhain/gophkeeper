@@ -1,14 +1,27 @@
-package secrets
+package share
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/Eanhain/gophkeeper/internal/entity"
+	"github.com/Eanhain/gophkeeper/pkg/postgres"
 	"github.com/Masterminds/squirrel"
 )
 
-func (ps *SecretsRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInput) (entity.User, error) {
+// ShareRepo -.
+type ShareRepo struct {
+	*postgres.Postgres
+	log domain.LoggerI
+}
+
+// New -.
+func New(pg *postgres.Postgres, log domain.LoggerI) *ShareRepo {
+	return &ShareRepo{pg, log}
+}
+
+func (ps *ShareRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInput) (entity.User, error) {
 	var orUser entity.User
 
 	sql, args, err := ps.Builder.
@@ -30,7 +43,7 @@ func (ps *SecretsRepo) CheckUser(ctx context.Context, untrustedUser entity.UserI
 	return orUser, nil
 }
 
-func (ps *SecretsRepo) GetUserID(ctx context.Context, username string) (int, error) {
+func (ps *ShareRepo) GetUserID(ctx context.Context, username string) (int, error) {
 	var id int
 
 	sql, args, err := ps.Builder.
