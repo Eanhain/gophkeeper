@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/Eanhain/gophkeeper/config"
-	_ "github.com/Eanhain/gophkeeper/docs" // Swagger docs.
 	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/Eanhain/gophkeeper/internal/controller/restapi/middleware"
 	v1 "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1"
