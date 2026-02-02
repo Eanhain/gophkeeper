@@ -13,19 +13,23 @@ import (
 // Repo реализует все интерфейсы секретов
 type Repo struct {
 	*postgres.Postgres
-	log domain.LoggerI
+	log       domain.LoggerI
+	cryptoKey string
 }
 
 // New создаёт новый репозиторий секретов
-func New(pg *postgres.Postgres, log domain.LoggerI) *Repo {
-	return &Repo{pg, log}
+func New(pg *postgres.Postgres, log domain.LoggerI, cryptoKey string) *Repo {
+	if cryptoKey == "" {
+		log.Fatal("secrets repo: CRYPTO_KEY is empty")
+	}
+	return &Repo{pg, log, cryptoKey}
 }
 
 func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword) error {
 	sql, args, err := r.Builder.
 		Insert("user_credentials").
 		Columns("user_id", "login", "password_enc", "label").
-		Values(lp.UserID, lp.Login, lp.Password, lp.Label).
+		Values(lp.UserID, lp.Login, squirrel.Expr("pgp_sym_encrypt(?, ?)", lp.Password, r.cryptoKey), lp.Label).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build sql: %w", err)
@@ -40,7 +44,9 @@ func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword)
 
 func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.LoginPassword, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "login", "encode(password_enc, 'base64') AS password_enc", "label").
+		Select("user_id", "login").
+		Column("pgp_sym_decrypt(password_enc, ?) AS password_enc", r.cryptoKey).
+		Column("label").
 		From("user_credentials").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -84,7 +90,7 @@ func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
 	sql, args, err := r.Builder.
 		Insert("user_text_items").
 		Columns("user_id", "title", "body").
-		Values(ts.UserID, ts.Title, ts.Body).
+		Values(ts.UserID, ts.Title, squirrel.Expr("pgp_sym_encrypt(?, ?)", ts.Body, r.cryptoKey)).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build sql: %w", err)
@@ -99,7 +105,8 @@ func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
 
 func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "title", "body").
+		Select("user_id", "title").
+		Column("pgp_sym_decrypt(body, ?) AS body", r.cryptoKey).
 		From("user_text_items").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -143,7 +150,7 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 	sql, args, err := r.Builder.
 		Insert("user_binary_items").
 		Columns("user_id", "filename", "mime_type", "data").
-		Values(bs.UserID, bs.Filename, bs.MimeType, bs.Data).
+		Values(bs.UserID, bs.Filename, bs.MimeType, squirrel.Expr("pgp_sym_encrypt(?, ?)", bs.Data, r.cryptoKey)).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build sql: %w", err)
@@ -158,7 +165,8 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 
 func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.BinarySecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "filename", "mime_type", "encode(data, 'base64') AS data").
+		Select("user_id", "filename", "mime_type").
+		Column("pgp_sym_decrypt(data, ?) AS data", r.cryptoKey).
 		From("user_binary_items").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -202,7 +210,7 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 	sql, args, err := r.Builder.
 		Insert("user_cards").
 		Columns("user_id", "cardholder", "pan_enc", "exp_month", "exp_year", "brand", "last4").
-		Values(cs.UserID, cs.Cardholder, cs.Pan, cs.ExpMonth, cs.ExpYear, cs.Brand, cs.Last4).
+		Values(cs.UserID, cs.Cardholder, squirrel.Expr("pgp_sym_encrypt(?, ?)", cs.Pan, r.cryptoKey), cs.ExpMonth, cs.ExpYear, cs.Brand, cs.Last4).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("failed to build sql: %w", err)
@@ -217,7 +225,12 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 
 func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "cardholder", "encode(pan_enc, 'base64') AS pan_enc", "exp_month", "exp_year", "brand", "last4").
+		Select("user_id", "cardholder").
+		Column("pgp_sym_decrypt(pan_enc, ?) AS pan_enc", r.cryptoKey).
+		Column("exp_month").
+		Column("exp_year").
+		Column("brand").
+		Column("last4").
 		From("user_cards").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()

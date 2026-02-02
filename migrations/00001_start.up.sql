@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Владелец (учётка для входа в систему)
 CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
@@ -21,7 +23,7 @@ CREATE TABLE IF NOT EXISTS user_text_items (
   id         SERIAL PRIMARY KEY,
   user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title      TEXT,
-  body       TEXT NOT NULL,
+  body       BYTEA NOT NULL,              -- зашифрованный текст
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

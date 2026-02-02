@@ -16,6 +16,7 @@ type (
 		PG      PG
 		Swagger Swagger
 		JWT     JWT
+		Crypto  Crypto
 	}
 
 	// App -.
@@ -49,6 +50,11 @@ type (
 	// JWT -.
 	JWT struct {
 		Secret string `env:"JWT_SECRET" envDefault:"supersecret"`
+	}
+
+	// Crypto -.
+	Crypto struct {
+		Key string `env:"CRYPTO_KEY,required"`
 	}
 )
 
