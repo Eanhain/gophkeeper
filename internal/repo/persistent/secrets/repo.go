@@ -40,7 +40,7 @@ func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword)
 
 func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.LoginPassword, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "login", "password_enc", "label").
+		Select("user_id", "login", "encode(password_enc, 'base64') AS password_enc", "label").
 		From("user_credentials").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -158,7 +158,7 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 
 func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.BinarySecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "filename", "mime_type", "data").
+		Select("user_id", "filename", "mime_type", "encode(data, 'base64') AS data").
 		From("user_binary_items").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -217,7 +217,7 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 
 func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "cardholder", "pan_enc", "exp_month", "exp_year", "brand", "last4").
+		Select("user_id", "cardholder", "encode(pan_enc, 'base64') AS pan_enc", "exp_month", "exp_year", "brand", "last4").
 		From("user_cards").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
