@@ -22,7 +22,7 @@ import (
 // @version     1.0
 // @host        localhost:8080
 // @BasePath    /v1
-func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, l domain.LoggerI) {
+func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, s usecase.SecretsUseCase, l domain.LoggerI) {
 
 	app.Use(fiberLogger.New(fiberLogger.Config{
 		Format:     `{"ip":"${ip}","method":"${method}","path":"${path}","status":${status},"latency":"${latency}","resBody":${resBody},"time":"${time}"}\n`,
@@ -46,6 +46,6 @@ func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, l doma
 	apiV1Group := app.Group("/v1")
 	{
 		v1.NewAuthRoutes(apiV1Group, t, jwtConf, l)
-		v1.NewSecretRoutes(apiV1Group, t, jwtConf, l)
+		v1.NewSecretRoutes(apiV1Group, s, jwtConf, l)
 	}
 }

@@ -10,6 +10,11 @@ import (
 // V1 -.
 type V1 struct {
 	t       usecase.AuthUseCase
+	lp      usecase.LoginPasswordUseCase
+	ts      usecase.TextSecretUseCase
+	bs      usecase.BinarySecretUseCase
+	cs      usecase.CardSecretUseCase
+	alls    usecase.SecretsUseCase
 	l       domain.LoggerI
 	v       *validator.Validate
 	jwtConf jwtware.Config
