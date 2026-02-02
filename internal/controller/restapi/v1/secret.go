@@ -38,7 +38,7 @@ func (r *V1) DeleteLoginPassword(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.lp.DeleteLoginPassword(c.Context(), login, body.Login)
+	r.secrets.DeleteLoginPassword(c.Context(), login, body.Login)
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (r *V1) DeleteTextSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.ts.DeleteTextSecret(c.Context(), login, body.Title)
+	r.secrets.DeleteTextSecret(c.Context(), login, body.Title)
 	return nil
 }
 
@@ -56,7 +56,7 @@ func (r *V1) DeleteBinarySecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.bs.DeleteBinarySecret(c.Context(), login, body.Filename)
+	r.secrets.DeleteBinarySecret(c.Context(), login, body.Filename)
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (r *V1) DeleteCardSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.cs.DeleteCardSecret(c.Context(), login, body.Cardholder)
+	r.secrets.DeleteCardSecret(c.Context(), login, body.Cardholder)
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (r *V1) GetLoginPassword(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.ErrUnauthorized
 	}
-	loginPasswords, err := r.lp.GetLoginPasswords(c.Context(), username)
+	loginPasswords, err := r.secrets.GetLoginPasswords(c.Context(), username)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (r *V1) GetTextSecret(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.ErrUnauthorized
 	}
-	textSecrets, err := r.ts.GetTextSecrets(c.Context(), username)
+	textSecrets, err := r.secrets.GetTextSecrets(c.Context(), username)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.ErrUnauthorized
 	}
-	binarySecrets, err := r.bs.GetBinarySecrets(c.Context(), username)
+	binarySecrets, err := r.secrets.GetBinarySecrets(c.Context(), username)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (r *V1) GetCardSecret(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.ErrUnauthorized
 	}
-	cardSecrets, err := r.cs.GetCardSecrets(c.Context(), username)
+	cardSecrets, err := r.secrets.GetCardSecrets(c.Context(), username)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.ErrUnauthorized
 	}
-	allSecrets, err := r.alls.GetAllSecrets(c.Context(), username)
+	allSecrets, err := r.secrets.GetAllSecrets(c.Context(), username)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (r *V1) PostLoginPassword(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.lp.CreateLoginPassword(c.Context(), login, body)
+	r.secrets.CreateLoginPassword(c.Context(), login, body)
 	return c.JSON(fiber.Map{"message": "Login password created"})
 }
 
@@ -183,7 +183,7 @@ func (r *V1) PostTextSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.ts.CreateTextSecret(c.Context(), login, body)
+	r.secrets.CreateTextSecret(c.Context(), login, body)
 	return c.JSON(fiber.Map{"message": "Text secret created"})
 }
 
@@ -192,7 +192,7 @@ func (r *V1) PostBinarySecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.bs.CreateBinarySecret(c.Context(), login, body)
+	r.secrets.CreateBinarySecret(c.Context(), login, body)
 	return c.JSON(fiber.Map{"message": "Binary secret created"})
 }
 
@@ -201,6 +201,6 @@ func (r *V1) PostCardSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.cs.CreateCardSecret(c.Context(), login, body)
+	r.secrets.CreateCardSecret(c.Context(), login, body)
 	return c.JSON(fiber.Map{"message": "Card secret created"})
 }

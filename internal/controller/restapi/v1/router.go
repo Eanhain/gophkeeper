@@ -30,7 +30,7 @@ func NewAuthRoutes(apiV1Group fiber.Router, t usecase.AuthUseCase, jwtConf jwtwa
 func NewSecretRoutes(apiV1Group fiber.Router,
 	s usecase.SecretsUseCase, jwtConf jwtware.Config, l domain.LoggerI) {
 
-	r := &V1{lp: lp, ts: ts, bs: bs, cs: cs, alls: alls, l: l, v: validator.New(validator.WithRequiredStructEnabled()), jwtConf: jwtConf}
+	r := &V1{secrets: s, l: l, v: validator.New(validator.WithRequiredStructEnabled()), jwtConf: jwtConf}
 
 	secretGroup := apiV1Group.Group("/api/user/secret/")
 
