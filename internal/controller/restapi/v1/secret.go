@@ -2,6 +2,7 @@ package v1
 
 import (
 	res "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/request"
+	resp "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/response"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -86,7 +87,7 @@ func (r *V1) GetLoginPassword(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(loginPasswords)
+	return c.JSON(resp.FromLoginPasswords(loginPasswords))
 }
 
 func (r *V1) GetTextSecret(c *fiber.Ctx) error {
@@ -106,7 +107,7 @@ func (r *V1) GetTextSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(textSecrets)
+	return c.JSON(resp.FromTextSecrets(textSecrets))
 }
 
 func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
@@ -126,7 +127,7 @@ func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(binarySecrets)
+	return c.JSON(resp.FromBinarySecrets(binarySecrets))
 }
 
 func (r *V1) GetCardSecret(c *fiber.Ctx) error {
@@ -146,7 +147,7 @@ func (r *V1) GetCardSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(cardSecrets)
+	return c.JSON(resp.FromCardSecrets(cardSecrets))
 }
 
 func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
@@ -166,7 +167,7 @@ func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(allSecrets)
+	return c.JSON(resp.FromAllSecrets(allSecrets))
 }
 
 func (r *V1) PostLoginPassword(c *fiber.Ctx) error {
