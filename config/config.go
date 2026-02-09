@@ -54,7 +54,7 @@ type (
 
 	// Crypto -.
 	Crypto struct {
-		Key string `env:"CRYPTO_KEY,required"`
+		Key string `env:"CRYPTO_KEY,required" envDefault:"supersecret"`
 	}
 )
 
