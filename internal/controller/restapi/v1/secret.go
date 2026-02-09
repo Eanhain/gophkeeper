@@ -1,6 +1,9 @@
 package v1
 
 import (
+	"errors"
+
+	"github.com/Eanhain/gophkeeper/domain"
 	res "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/request"
 	resp "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/response"
 	"github.com/gofiber/fiber/v2"
@@ -29,18 +32,51 @@ func ParseBody[T BodySecret](c *fiber.Ctx) (string, T, error) {
 		return "", rValue, fiber.ErrUnauthorized
 	}
 	if err := c.BodyParser(&rValue); err != nil {
-		return "", rValue, err
+		return "", rValue, fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 	return username, rValue, nil
 }
+
+func usecaseErr(err error) error {
+	switch {
+	case errors.Is(err, domain.ErrAlreadyExists):
+		return fiber.NewError(fiber.StatusConflict, "already exists")
+	case errors.Is(err, domain.ErrNotFound):
+		return fiber.NewError(fiber.StatusNotFound, "not found")
+	case errors.Is(err, domain.ErrInvalidInput):
+		return fiber.NewError(fiber.StatusBadRequest, "required fields missing or invalid")
+	default:
+		return fiber.ErrInternalServerError
+	}
+}
+
+func extractUsername(c *fiber.Ctx) (string, error) {
+	userToken, ok := c.Locals("user").(*jwt.Token)
+	if !ok {
+		return "", fiber.ErrUnauthorized
+	}
+	claims, ok := userToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fiber.ErrUnauthorized
+	}
+	username, ok := claims["login"].(string)
+	if !ok {
+		return "", fiber.ErrUnauthorized
+	}
+	return username, nil
+}
+
+// --- Delete ---
 
 func (r *V1) DeleteLoginPassword(c *fiber.Ctx) error {
 	login, body, err := ParseBody[res.DeleteLoginPassword](c)
 	if err != nil {
 		return err
 	}
-	r.secrets.DeleteLoginPassword(c.Context(), login, body.Login)
-	return nil
+	if err := r.secrets.DeleteLoginPassword(c.Context(), login, body.Login); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "login password deleted"})
 }
 
 func (r *V1) DeleteTextSecret(c *fiber.Ctx) error {
@@ -48,8 +84,10 @@ func (r *V1) DeleteTextSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.DeleteTextSecret(c.Context(), login, body.Title)
-	return nil
+	if err := r.secrets.DeleteTextSecret(c.Context(), login, body.Title); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "text secret deleted"})
 }
 
 func (r *V1) DeleteBinarySecret(c *fiber.Ctx) error {
@@ -57,8 +95,10 @@ func (r *V1) DeleteBinarySecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.DeleteBinarySecret(c.Context(), login, body.Filename)
-	return nil
+	if err := r.secrets.DeleteBinarySecret(c.Context(), login, body.Filename); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "binary secret deleted"})
 }
 
 func (r *V1) DeleteCardSecret(c *fiber.Ctx) error {
@@ -66,117 +106,85 @@ func (r *V1) DeleteCardSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.DeleteCardSecret(c.Context(), login, body.Cardholder)
-	return nil
+	if err := r.secrets.DeleteCardSecret(c.Context(), login, body.Cardholder); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "card secret deleted"})
 }
 
+// --- Get ---
+
 func (r *V1) GetLoginPassword(c *fiber.Ctx) error {
-	userToken, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	claims, ok := userToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	username, ok := claims["login"].(string)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	loginPasswords, err := r.secrets.GetLoginPasswords(c.Context(), username)
+	username, err := extractUsername(c)
 	if err != nil {
 		return err
 	}
-	return c.JSON(resp.FromLoginPasswords(loginPasswords))
+	result, err := r.secrets.GetLoginPasswords(c.Context(), username)
+	if err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(resp.FromLoginPasswords(result))
 }
 
 func (r *V1) GetTextSecret(c *fiber.Ctx) error {
-	userToken, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	claims, ok := userToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	username, ok := claims["login"].(string)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	textSecrets, err := r.secrets.GetTextSecrets(c.Context(), username)
+	username, err := extractUsername(c)
 	if err != nil {
 		return err
 	}
-	return c.JSON(resp.FromTextSecrets(textSecrets))
+	result, err := r.secrets.GetTextSecrets(c.Context(), username)
+	if err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(resp.FromTextSecrets(result))
 }
 
 func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
-	userToken, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	claims, ok := userToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	username, ok := claims["login"].(string)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	binarySecrets, err := r.secrets.GetBinarySecrets(c.Context(), username)
+	username, err := extractUsername(c)
 	if err != nil {
 		return err
 	}
-	return c.JSON(resp.FromBinarySecrets(binarySecrets))
+	result, err := r.secrets.GetBinarySecrets(c.Context(), username)
+	if err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(resp.FromBinarySecrets(result))
 }
 
 func (r *V1) GetCardSecret(c *fiber.Ctx) error {
-	userToken, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	claims, ok := userToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	username, ok := claims["login"].(string)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	cardSecrets, err := r.secrets.GetCardSecrets(c.Context(), username)
+	username, err := extractUsername(c)
 	if err != nil {
 		return err
 	}
-	return c.JSON(resp.FromCardSecrets(cardSecrets))
+	result, err := r.secrets.GetCardSecrets(c.Context(), username)
+	if err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(resp.FromCardSecrets(result))
 }
 
 func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
-	userToken, ok := c.Locals("user").(*jwt.Token)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	claims, ok := userToken.Claims.(jwt.MapClaims)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	username, ok := claims["login"].(string)
-	if !ok {
-		return fiber.ErrUnauthorized
-	}
-	allSecrets, err := r.secrets.GetAllSecrets(c.Context(), username)
+	username, err := extractUsername(c)
 	if err != nil {
 		return err
 	}
-	return c.JSON(resp.FromAllSecrets(allSecrets))
+	all, err := r.secrets.GetAllSecrets(c.Context(), username)
+	if err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(resp.FromAllSecrets(all))
 }
+
+// --- Post ---
 
 func (r *V1) PostLoginPassword(c *fiber.Ctx) error {
 	login, body, err := ParseBody[res.LoginPassword](c)
 	if err != nil {
 		return err
 	}
-	r.secrets.CreateLoginPassword(c.Context(), login, body)
-	return c.JSON(fiber.Map{"message": "Login password created"})
+	if err := r.secrets.CreateLoginPassword(c.Context(), login, body); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "login password created"})
 }
 
 func (r *V1) PostTextSecret(c *fiber.Ctx) error {
@@ -184,8 +192,10 @@ func (r *V1) PostTextSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.CreateTextSecret(c.Context(), login, body)
-	return c.JSON(fiber.Map{"message": "Text secret created"})
+	if err := r.secrets.CreateTextSecret(c.Context(), login, body); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "text secret created"})
 }
 
 func (r *V1) PostBinarySecret(c *fiber.Ctx) error {
@@ -193,8 +203,10 @@ func (r *V1) PostBinarySecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.CreateBinarySecret(c.Context(), login, body)
-	return c.JSON(fiber.Map{"message": "Binary secret created"})
+	if err := r.secrets.CreateBinarySecret(c.Context(), login, body); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "binary secret created"})
 }
 
 func (r *V1) PostCardSecret(c *fiber.Ctx) error {
@@ -202,6 +214,8 @@ func (r *V1) PostCardSecret(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	r.secrets.CreateCardSecret(c.Context(), login, body)
-	return c.JSON(fiber.Map{"message": "Card secret created"})
+	if err := r.secrets.CreateCardSecret(c.Context(), login, body); err != nil {
+		return usecaseErr(err)
+	}
+	return c.JSON(fiber.Map{"message": "card secret created"})
 }

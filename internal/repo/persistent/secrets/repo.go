@@ -2,28 +2,39 @@ package secrets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/Eanhain/gophkeeper/internal/entity"
 	"github.com/Eanhain/gophkeeper/pkg/postgres"
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Repo реализует все интерфейсы секретов
 type Repo struct {
 	*postgres.Postgres
 	log       domain.LoggerI
 	cryptoKey string
 }
 
-// New создаёт новый репозиторий секретов
 func New(pg *postgres.Postgres, log domain.LoggerI, cryptoKey string) *Repo {
 	if cryptoKey == "" {
 		log.Fatal("secrets repo: CRYPTO_KEY is empty")
 	}
 	return &Repo{pg, log, cryptoKey}
 }
+
+func (r *Repo) wrapExecErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsDataException(pgErr.Code) {
+		return domain.ErrInvalidInput
+	}
+	return err
+}
+
+// --- LoginPassword ---
 
 func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword) error {
 	sql, args, err := r.Builder.
@@ -32,13 +43,12 @@ func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword)
 		Values(lp.UserID, lp.Login, squirrel.Expr("pgp_sym_encrypt(?, ?)", lp.Password, r.cryptoKey), lp.Label).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
-	tag, err := r.Pool.Exec(ctx, sql, args...)
+	_, err = r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't create login password: %w", err)
+		return r.wrapExecErr(err)
 	}
-	r.log.Info("Login password created, rows affected: %d, login: %s", tag.RowsAffected(), lp.Login)
 	return nil
 }
 
@@ -51,11 +61,11 @@ func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.Logi
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build sql: %w", err)
+		return nil, fmt.Errorf("build sql: %w", err)
 	}
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("can't get login passwords: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
@@ -63,7 +73,7 @@ func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.Logi
 	for rows.Next() {
 		var lp entity.LoginPassword
 		if err := rows.Scan(&lp.UserID, &lp.Login, &lp.Password, &lp.Label); err != nil {
-			return nil, fmt.Errorf("can't scan login password: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, lp)
 	}
@@ -76,15 +86,19 @@ func (r *Repo) DeleteLoginPassword(ctx context.Context, userID int, login string
 		Where(squirrel.Eq{"user_id": userID, "login": login}).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
 	tag, err := r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't delete login password: %w", err)
+		return fmt.Errorf("exec: %w", err)
 	}
-	r.log.Info("Login password deleted, rows affected: %d", tag.RowsAffected())
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
 	return nil
 }
+
+// --- TextSecret ---
 
 func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error {
 	sql, args, err := r.Builder.
@@ -93,13 +107,12 @@ func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
 		Values(ts.UserID, ts.Title, squirrel.Expr("pgp_sym_encrypt(?, ?)", ts.Body, r.cryptoKey)).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
-	tag, err := r.Pool.Exec(ctx, sql, args...)
+	_, err = r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't create text secret: %w", err)
+		return r.wrapExecErr(err)
 	}
-	r.log.Info("Text secret created, rows affected: %d, title: %s", tag.RowsAffected(), ts.Title)
 	return nil
 }
 
@@ -111,11 +124,11 @@ func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSec
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build sql: %w", err)
+		return nil, fmt.Errorf("build sql: %w", err)
 	}
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("can't get text secrets: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
@@ -123,7 +136,7 @@ func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSec
 	for rows.Next() {
 		var ts entity.TextSecret
 		if err := rows.Scan(&ts.UserID, &ts.Title, &ts.Body); err != nil {
-			return nil, fmt.Errorf("can't scan text secret: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, ts)
 	}
@@ -136,15 +149,19 @@ func (r *Repo) DeleteTextSecret(ctx context.Context, userID int, title string) e
 		Where(squirrel.Eq{"user_id": userID, "title": title}).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
 	tag, err := r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't delete text secret: %w", err)
+		return fmt.Errorf("exec: %w", err)
 	}
-	r.log.Info("Text secret deleted, rows affected: %d", tag.RowsAffected())
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
 	return nil
 }
+
+// --- BinarySecret ---
 
 func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) error {
 	sql, args, err := r.Builder.
@@ -153,13 +170,12 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 		Values(bs.UserID, bs.Filename, bs.MimeType, squirrel.Expr("pgp_sym_encrypt(?, ?)", bs.Data, r.cryptoKey)).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
-	tag, err := r.Pool.Exec(ctx, sql, args...)
+	_, err = r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't create binary secret: %w", err)
+		return r.wrapExecErr(err)
 	}
-	r.log.Info("Binary secret created, rows affected: %d, filename: %s", tag.RowsAffected(), bs.Filename)
 	return nil
 }
 
@@ -171,11 +187,11 @@ func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.Binar
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build sql: %w", err)
+		return nil, fmt.Errorf("build sql: %w", err)
 	}
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("can't get binary secrets: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
@@ -183,7 +199,7 @@ func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.Binar
 	for rows.Next() {
 		var bs entity.BinarySecret
 		if err := rows.Scan(&bs.UserID, &bs.Filename, &bs.MimeType, &bs.Data); err != nil {
-			return nil, fmt.Errorf("can't scan binary secret: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, bs)
 	}
@@ -196,15 +212,19 @@ func (r *Repo) DeleteBinarySecret(ctx context.Context, userID int, filename stri
 		Where(squirrel.Eq{"user_id": userID, "filename": filename}).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
 	tag, err := r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't delete binary secret: %w", err)
+		return fmt.Errorf("exec: %w", err)
 	}
-	r.log.Info("Binary secret deleted, rows affected: %d", tag.RowsAffected())
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
 	return nil
 }
+
+// --- CardSecret ---
 
 func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error {
 	sql, args, err := r.Builder.
@@ -213,13 +233,12 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 		Values(cs.UserID, cs.Cardholder, squirrel.Expr("pgp_sym_encrypt(?, ?)", cs.Pan, r.cryptoKey), cs.ExpMonth, cs.ExpYear, cs.Brand, cs.Last4).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
-	tag, err := r.Pool.Exec(ctx, sql, args...)
+	_, err = r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't create card secret: %w", err)
+		return r.wrapExecErr(err)
 	}
-	r.log.Info("Card secret created, rows affected: %d, cardholder: %s", tag.RowsAffected(), cs.Cardholder)
 	return nil
 }
 
@@ -235,11 +254,11 @@ func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSec
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build sql: %w", err)
+		return nil, fmt.Errorf("build sql: %w", err)
 	}
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("can't get card secrets: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
@@ -247,7 +266,7 @@ func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSec
 	for rows.Next() {
 		var cs entity.CardSecret
 		if err := rows.Scan(&cs.UserID, &cs.Cardholder, &cs.Pan, &cs.ExpMonth, &cs.ExpYear, &cs.Brand, &cs.Last4); err != nil {
-			return nil, fmt.Errorf("can't scan card secret: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, cs)
 	}
@@ -260,15 +279,19 @@ func (r *Repo) DeleteCardSecret(ctx context.Context, userID int, cardholder stri
 		Where(squirrel.Eq{"user_id": userID, "cardholder": cardholder}).
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("failed to build sql: %w", err)
+		return fmt.Errorf("build sql: %w", err)
 	}
 	tag, err := r.Pool.Exec(ctx, sql, args...)
 	if err != nil {
-		return fmt.Errorf("can't delete card secret: %w", err)
+		return fmt.Errorf("exec: %w", err)
 	}
-	r.log.Info("Card secret deleted, rows affected: %d", tag.RowsAffected())
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
 	return nil
 }
+
+// --- Shared ---
 
 func (r *Repo) GetUserID(ctx context.Context, username string) (int, error) {
 	sql, args, err := r.Builder.
@@ -277,37 +300,37 @@ func (r *Repo) GetUserID(ctx context.Context, username string) (int, error) {
 		Where(squirrel.Eq{"username": username}).
 		ToSql()
 	if err != nil {
-		return 0, fmt.Errorf("failed to build sql: %w", err)
+		return 0, fmt.Errorf("build sql: %w", err)
 	}
 	var userID int
 	err = r.Pool.QueryRow(ctx, sql, args...).Scan(&userID)
 	if err != nil {
-		return 0, fmt.Errorf("can't get user id: %w", err)
+		return 0, fmt.Errorf("get user id: %w", err)
 	}
 	return userID, nil
 }
 
 func (r *Repo) GetAllSecrets(ctx context.Context, userID int) (entity.AllSecrets, error) {
-	loginPasswords, err := r.GetLoginPasswords(ctx, userID)
+	lp, err := r.GetLoginPasswords(ctx, userID)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	textSecrets, err := r.GetTextSecrets(ctx, userID)
+	ts, err := r.GetTextSecrets(ctx, userID)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	binarySecrets, err := r.GetBinarySecrets(ctx, userID)
+	bs, err := r.GetBinarySecrets(ctx, userID)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	cardSecrets, err := r.GetCardSecrets(ctx, userID)
+	cs, err := r.GetCardSecrets(ctx, userID)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
 	return entity.AllSecrets{
-		LoginPassword: loginPasswords,
-		TextSecret:    textSecrets,
-		BinarySecret:  binarySecrets,
-		CardSecret:    cardSecrets,
+		LoginPassword: lp,
+		TextSecret:    ts,
+		BinarySecret:  bs,
+		CardSecret:    cs,
 	}, nil
 }

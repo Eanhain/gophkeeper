@@ -44,6 +44,7 @@ func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, s usec
 
 	// Routers
 	apiV1Group := app.Group("/v1")
+	apiV1Group.Use(middleware.CryptoMiddleware(cfg.Crypto.Key))
 	{
 		v1.NewAuthRoutes(apiV1Group, t, jwtConf, l)
 		v1.NewSecretRoutes(apiV1Group, s, jwtConf, l)

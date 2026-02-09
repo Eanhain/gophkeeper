@@ -9,71 +9,65 @@ import (
 	"github.com/Eanhain/gophkeeper/internal/repo"
 )
 
-// UseCase реализует все интерфейсы секретов
 type UseCase struct {
 	repo repo.SecretsRepo
 	log  domain.LoggerI
 }
 
-// New создаёт UseCase для работы с секретами
 func New(r repo.SecretsRepo, log domain.LoggerI) *UseCase {
-	return &UseCase{
-		repo: r,
-		log:  log,
-	}
+	return &UseCase{repo: r, log: log}
 }
 
 func (s *UseCase) CreateLoginPassword(ctx context.Context, username string, lp request.LoginPassword) error {
+	if lp.Login == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
 	}
 	return s.repo.CreateLoginPassword(ctx, entity.LoginPassword{
-		UserID:   userID,
-		Login:    lp.Login,
-		Password: lp.Password,
-		Label:    lp.Label,
+		UserID: userID, Login: lp.Login, Password: lp.Password, Label: lp.Label,
 	})
 }
 
 func (s *UseCase) CreateTextSecret(ctx context.Context, username string, ts request.TextSecret) error {
+	if ts.Title == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
 	}
 	return s.repo.CreateTextSecret(ctx, entity.TextSecret{
-		UserID: userID,
-		Title:  ts.Title,
-		Body:   ts.Body,
+		UserID: userID, Title: ts.Title, Body: ts.Body,
 	})
 }
 
 func (s *UseCase) CreateBinarySecret(ctx context.Context, username string, bs request.BinarySecret) error {
+	if bs.Filename == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
 	}
 	return s.repo.CreateBinarySecret(ctx, entity.BinarySecret{
-		UserID:   userID,
-		Filename: bs.Filename,
-		MimeType: bs.MimeType,
-		Data:     bs.Data,
+		UserID: userID, Filename: bs.Filename, MimeType: bs.MimeType, Data: bs.Data,
 	})
 }
 
 func (s *UseCase) CreateCardSecret(ctx context.Context, username string, cs request.CardSecret) error {
+	if cs.Cardholder == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
 	}
 	return s.repo.CreateCardSecret(ctx, entity.CardSecret{
-		UserID:     userID,
-		Cardholder: cs.Cardholder,
-		Pan:        cs.Pan,
-		ExpMonth:   cs.ExpMonth,
-		ExpYear:    cs.ExpYear,
-		Brand:      cs.Brand,
-		Last4:      cs.Last4,
+		UserID: userID, Cardholder: cs.Cardholder, Pan: cs.Pan,
+		ExpMonth: cs.ExpMonth, ExpYear: cs.ExpYear, Brand: cs.Brand, Last4: cs.Last4,
 	})
 }
 
@@ -118,6 +112,9 @@ func (s *UseCase) GetAllSecrets(ctx context.Context, username string) (entity.Al
 }
 
 func (s *UseCase) DeleteLoginPassword(ctx context.Context, username string, login string) error {
+	if login == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
@@ -126,6 +123,9 @@ func (s *UseCase) DeleteLoginPassword(ctx context.Context, username string, logi
 }
 
 func (s *UseCase) DeleteTextSecret(ctx context.Context, username string, title string) error {
+	if title == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
@@ -134,6 +134,9 @@ func (s *UseCase) DeleteTextSecret(ctx context.Context, username string, title s
 }
 
 func (s *UseCase) DeleteBinarySecret(ctx context.Context, username string, filename string) error {
+	if filename == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err
@@ -142,6 +145,9 @@ func (s *UseCase) DeleteBinarySecret(ctx context.Context, username string, filen
 }
 
 func (s *UseCase) DeleteCardSecret(ctx context.Context, username string, cardholder string) error {
+	if cardholder == "" {
+		return domain.ErrInvalidInput
+	}
 	userID, err := s.repo.GetUserID(ctx, username)
 	if err != nil {
 		return err

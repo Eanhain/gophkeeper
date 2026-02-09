@@ -17,4 +17,8 @@ var (
 	ErrBalanceWithdrawn       = errors.New("not enough bonuses on balance")
 	ErrRequestCount           = errors.New("no more than N requests per minute allowed on accural service, try later")
 	ErrEmptyOrdersList        = errors.New("order list is empty")
+
+	ErrNotFound      = errors.New("not found")
+	ErrAlreadyExists = errors.New("already exists")
+	ErrInvalidInput  = errors.New("invalid input")
 )
