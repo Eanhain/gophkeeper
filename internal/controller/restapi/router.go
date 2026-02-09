@@ -4,35 +4,32 @@ package restapi
 import (
 	"net/http"
 
-	"github.com/ansrivas/fiberprometheus/v2"
-	"github.com/evrone/go-clean-template/config"
-	_ "github.com/evrone/go-clean-template/docs" // Swagger docs.
-	"github.com/evrone/go-clean-template/internal/controller/restapi/middleware"
-	v1 "github.com/evrone/go-clean-template/internal/controller/restapi/v1"
-	"github.com/evrone/go-clean-template/internal/usecase"
-	"github.com/evrone/go-clean-template/pkg/logger"
+	"github.com/Eanhain/gophkeeper/config"
+	"github.com/Eanhain/gophkeeper/domain"
+	"github.com/Eanhain/gophkeeper/internal/controller/restapi/middleware"
+	v1 "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1"
+	"github.com/Eanhain/gophkeeper/internal/usecase"
+	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
+	fiberLogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 )
 
 // NewRouter -.
 // Swagger spec:
-// @title       Go Clean Template API
-// @description Using a translation service as an example
+// @title       Gophkeeper API
+// @description Gophkeeper API
 // @version     1.0
 // @host        localhost:8080
 // @BasePath    /v1
-func NewRouter(app *fiber.App, cfg *config.Config, t usecase.Translation, l logger.Interface) {
-	// Options
-	app.Use(middleware.Logger(l))
-	app.Use(middleware.Recovery(l))
+func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, s usecase.SecretsUseCase, l domain.LoggerI) {
 
-	// Prometheus metrics
-	if cfg.Metrics.Enabled {
-		prometheus := fiberprometheus.New("my-service-name")
-		prometheus.RegisterAt(app, "/metrics")
-		app.Use(prometheus.Middleware)
-	}
+	app.Use(fiberLogger.New(fiberLogger.Config{
+		Format:     `{"ip":"${ip}","method":"${method}","path":"${path}","status":${status},"latency":"${latency}","resBody":${resBody},"time":"${time}"}\n`,
+		TimeFormat: "2006-01-02 15:04:05",
+		TimeZone:   "UTC",
+	}))
+	app.Use(middleware.Recovery(l))
 
 	// Swagger
 	if cfg.Swagger.Enabled {
@@ -42,9 +39,13 @@ func NewRouter(app *fiber.App, cfg *config.Config, t usecase.Translation, l logg
 	// K8s probe
 	app.Get("/healthz", func(ctx *fiber.Ctx) error { return ctx.SendStatus(http.StatusOK) })
 
+	jwtConf := jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: []byte(cfg.JWT.Secret)}, ErrorHandler: jwtError}
+
 	// Routers
 	apiV1Group := app.Group("/v1")
 	{
-		v1.NewTranslationRoutes(apiV1Group, t, l)
+		v1.NewAuthRoutes(apiV1Group, t, jwtConf, l)
+		v1.NewSecretRoutes(apiV1Group, s, jwtConf, l)
 	}
 }
