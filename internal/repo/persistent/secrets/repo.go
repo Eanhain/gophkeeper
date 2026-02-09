@@ -1,3 +1,10 @@
+// Package secrets implements the repo.SecretsRepo interface backed by PostgreSQL.
+//
+// Sensitive fields (passwords, PAN, binary data, text bodies) are stored
+// encrypted at the database level using pgcrypto's pgp_sym_encrypt / pgp_sym_decrypt.
+// The encryption key is passed to the repository at construction time via CRYPTO_KEY.
+//
+// SQL is built with squirrel; queries are executed via pgx connection pool.
 package secrets
 
 import (
@@ -13,12 +20,15 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+// Repo is the PostgreSQL-backed secrets repository.
 type Repo struct {
 	*postgres.Postgres
 	log       domain.LoggerI
-	cryptoKey string
+	cryptoKey string // key for pgp_sym_encrypt/pgp_sym_decrypt
 }
 
+// New creates a Repo. Panics (via log.Fatal) if cryptoKey is empty,
+// because secrets cannot be stored without encryption.
 func New(pg *postgres.Postgres, log domain.LoggerI, cryptoKey string) *Repo {
 	if cryptoKey == "" {
 		log.Fatal("secrets repo: CRYPTO_KEY is empty")
@@ -26,6 +36,8 @@ func New(pg *postgres.Postgres, log domain.LoggerI, cryptoKey string) *Repo {
 	return &Repo{pg, log, cryptoKey}
 }
 
+// wrapExecErr inspects a PostgreSQL error and maps data-exception codes
+// (e.g. wrong data type) to domain.ErrInvalidInput. Other errors pass through.
 func (r *Repo) wrapExecErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgerrcode.IsDataException(pgErr.Code) {
@@ -36,6 +48,8 @@ func (r *Repo) wrapExecErr(err error) error {
 
 // --- LoginPassword ---
 
+// CreateLoginPassword inserts a credential record. The password field
+// is encrypted at the DB level with pgp_sym_encrypt.
 func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword) error {
 	sql, args, err := r.Builder.
 		Insert("user_credentials").
@@ -52,6 +66,8 @@ func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword)
 	return nil
 }
 
+// GetLoginPasswords returns all credentials for the given user,
+// decrypting passwords on the fly with pgp_sym_decrypt.
 func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.LoginPassword, error) {
 	sql, args, err := r.Builder.
 		Select("user_id", "login").
@@ -80,6 +96,8 @@ func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.Logi
 	return result, nil
 }
 
+// DeleteLoginPassword removes a credential by user ID and login identifier.
+// Returns domain.ErrNotFound if no rows were affected.
 func (r *Repo) DeleteLoginPassword(ctx context.Context, userID int, login string) error {
 	sql, args, err := r.Builder.
 		Delete("user_credentials").
@@ -100,6 +118,8 @@ func (r *Repo) DeleteLoginPassword(ctx context.Context, userID int, login string
 
 // --- TextSecret ---
 
+// CreateTextSecret inserts a text note. The body is encrypted
+// at the DB level with pgp_sym_encrypt.
 func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error {
 	sql, args, err := r.Builder.
 		Insert("user_text_items").
@@ -116,6 +136,8 @@ func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
 	return nil
 }
 
+// GetTextSecrets returns all text notes for the given user,
+// decrypting bodies on the fly.
 func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSecret, error) {
 	sql, args, err := r.Builder.
 		Select("user_id", "title").
@@ -143,6 +165,8 @@ func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSec
 	return result, nil
 }
 
+// DeleteTextSecret removes a text note by user ID and title.
+// Returns domain.ErrNotFound if no rows were affected.
 func (r *Repo) DeleteTextSecret(ctx context.Context, userID int, title string) error {
 	sql, args, err := r.Builder.
 		Delete("user_text_items").
@@ -163,6 +187,8 @@ func (r *Repo) DeleteTextSecret(ctx context.Context, userID int, title string) e
 
 // --- BinarySecret ---
 
+// CreateBinarySecret inserts a binary blob. The Data field (base64-encoded)
+// is encrypted at the DB level with pgp_sym_encrypt.
 func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) error {
 	sql, args, err := r.Builder.
 		Insert("user_binary_items").
@@ -179,6 +205,8 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 	return nil
 }
 
+// GetBinarySecrets returns all binary blobs for the given user,
+// decrypting the data column on the fly.
 func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.BinarySecret, error) {
 	sql, args, err := r.Builder.
 		Select("user_id", "filename", "mime_type").
@@ -206,6 +234,8 @@ func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.Binar
 	return result, nil
 }
 
+// DeleteBinarySecret removes a binary blob by user ID and filename.
+// Returns domain.ErrNotFound if no rows were affected.
 func (r *Repo) DeleteBinarySecret(ctx context.Context, userID int, filename string) error {
 	sql, args, err := r.Builder.
 		Delete("user_binary_items").
@@ -226,6 +256,8 @@ func (r *Repo) DeleteBinarySecret(ctx context.Context, userID int, filename stri
 
 // --- CardSecret ---
 
+// CreateCardSecret inserts a bank card. The PAN field is encrypted
+// at the DB level with pgp_sym_encrypt.
 func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error {
 	sql, args, err := r.Builder.
 		Insert("user_cards").
@@ -242,6 +274,8 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 	return nil
 }
 
+// GetCardSecrets returns all cards for the given user,
+// decrypting the PAN column on the fly.
 func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSecret, error) {
 	sql, args, err := r.Builder.
 		Select("user_id", "cardholder").
@@ -273,6 +307,8 @@ func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSec
 	return result, nil
 }
 
+// DeleteCardSecret removes a card by user ID and cardholder name.
+// Returns domain.ErrNotFound if no rows were affected.
 func (r *Repo) DeleteCardSecret(ctx context.Context, userID int, cardholder string) error {
 	sql, args, err := r.Builder.
 		Delete("user_cards").
@@ -293,6 +329,7 @@ func (r *Repo) DeleteCardSecret(ctx context.Context, userID int, cardholder stri
 
 // --- Shared ---
 
+// GetUserID resolves a username to the numeric "id" primary key.
 func (r *Repo) GetUserID(ctx context.Context, username string) (int, error) {
 	sql, args, err := r.Builder.
 		Select("id").
@@ -310,6 +347,8 @@ func (r *Repo) GetUserID(ctx context.Context, username string) (int, error) {
 	return userID, nil
 }
 
+// GetAllSecrets fetches all four secret types for a user in separate queries
+// and returns them combined in a single entity.AllSecrets struct.
 func (r *Repo) GetAllSecrets(ctx context.Context, userID int) (entity.AllSecrets, error) {
 	lp, err := r.GetLoginPasswords(ctx, userID)
 	if err != nil {

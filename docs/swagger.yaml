@@ -165,8 +165,27 @@ info:
   contact: {}
   description: |-
     GophKeeper — secure vault for passwords, text notes, binary data and bank cards.
-    All request/response bodies under /v1 are AES-256-GCM encrypted (Content-Type: application/octet-stream).
-    Decrypt the response body with the shared crypto key to obtain JSON.
+
+    ## Encryption Protocol
+    All request/response bodies under /v1 are **AES-256-GCM encrypted**.
+    The encryption key is derived as `SHA-256(CRYPTO_KEY)` — both client and server must share the same `CRYPTO_KEY`.
+
+    ### Request flow (client → server):
+    1. Serialize the JSON payload.
+    2. Encrypt with AES-256-GCM: `nonce (12 bytes) || ciphertext`.
+    3. Send the raw bytes with `Content-Type: application/octet-stream`.
+
+    ### Response flow (server → client):
+    1. Server handler produces JSON.
+    2. CryptoMiddleware encrypts it: `nonce (12 bytes) || ciphertext`.
+    3. Response is sent with `Content-Type: application/octet-stream`.
+    4. Client decrypts to get the original JSON.
+
+    **Note:** Swagger "Try it out" will NOT work because the UI sends plain JSON. Use the GophKeeper TUI client or encrypt requests manually.
+
+    ### Using the API without encryption
+    The REST API **cannot** be called with plain JSON — the CryptoMiddleware will reject unencrypted bodies with HTTP 400.
+    To test manually, use a script that encrypts/decrypts with the shared key (see `gophkeeper-client/internal/crypto`).
   title: Gophkeeper API
   version: "1.0"
 paths:

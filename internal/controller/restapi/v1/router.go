@@ -8,7 +8,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// NewAuthRoutes -.
+// NewAuthRoutes registers authentication-related endpoints:
+//
+//	POST /api/user/register  – create account (public)
+//	POST /api/user/login     – get JWT token  (public)
+//	DELETE /api/user/delete-user – remove account (JWT required)
 func NewAuthRoutes(apiV1Group fiber.Router, t usecase.AuthUseCase, jwtConf jwtware.Config, l domain.LoggerI) {
 	r := &V1{t: t, l: l, v: validator.New(validator.WithRequiredStructEnabled()), jwtConf: jwtConf}
 
@@ -26,7 +30,12 @@ func NewAuthRoutes(apiV1Group fiber.Router, t usecase.AuthUseCase, jwtConf jwtwa
 
 }
 
-// NewSecretRoutes -.
+// NewSecretRoutes registers CRUD endpoints for all secret types.
+// Every endpoint in this group requires a valid JWT token.
+//
+// DELETE endpoints expect a JSON body with the identifier to delete.
+// GET endpoints return an array of secrets owned by the user.
+// POST endpoints accept a JSON body with the secret data to create.
 func NewSecretRoutes(apiV1Group fiber.Router,
 	s usecase.SecretsUseCase, jwtConf jwtware.Config, l domain.LoggerI) {
 

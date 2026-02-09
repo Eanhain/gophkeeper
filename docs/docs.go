@@ -1275,7 +1275,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "Gophkeeper API",
-	Description:      "GophKeeper — secure vault for passwords, text notes, binary data and bank cards.\nAll request/response bodies under /v1 are AES-256-GCM encrypted (Content-Type: application/octet-stream).\nDecrypt the response body with the shared crypto key to obtain JSON.",
+	Description:      "GophKeeper — secure vault for passwords, text notes, binary data and bank cards.\n\n## Encryption Protocol\nAll request/response bodies under /v1 are **AES-256-GCM encrypted**.\nThe encryption key is derived as `SHA-256(CRYPTO_KEY)` — both client and server must share the same `CRYPTO_KEY`.\n\n### Request flow (client → server):\n1. Serialize the JSON payload.\n2. Encrypt with AES-256-GCM: `nonce (12 bytes) || ciphertext`.\n3. Send the raw bytes with `Content-Type: application/octet-stream`.\n\n### Response flow (server → client):\n1. Server handler produces JSON.\n2. CryptoMiddleware encrypts it: `nonce (12 bytes) || ciphertext`.\n3. Response is sent with `Content-Type: application/octet-stream`.\n4. Client decrypts to get the original JSON.\n\n**Note:** Swagger \"Try it out\" will NOT work because the UI sends plain JSON. Use the GophKeeper TUI client or encrypt requests manually.\n\n### Using the API without encryption\nThe REST API **cannot** be called with plain JSON — the CryptoMiddleware will reject unencrypted bodies with HTTP 400.\nTo test manually, use a script that encrypts/decrypts with the shared key (see `gophkeeper-client/internal/crypto`).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -10,6 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// BodySecret is a type constraint that lists all request structs
+// accepted by the generic ParseBody function.
 type BodySecret interface {
 	res.LoginPassword | res.TextSecret |
 		res.BinarySecret | res.CardSecret | res.Secret |
@@ -17,6 +19,11 @@ type BodySecret interface {
 		res.DeleteBinarySecret | res.DeleteCardSecret
 }
 
+// ParseBody is a generic helper that:
+//  1. Extracts the username from the JWT token stored in fiber.Ctx.Locals.
+//  2. Parses the JSON request body into the concrete type T.
+//
+// Returns the username and the parsed struct, or an appropriate fiber.Error.
 func ParseBody[T BodySecret](c *fiber.Ctx) (string, T, error) {
 	var rValue T
 	userToken, ok := c.Locals("user").(*jwt.Token)
@@ -37,6 +44,13 @@ func ParseBody[T BodySecret](c *fiber.Ctx) (string, T, error) {
 	return username, rValue, nil
 }
 
+// usecaseErr maps a domain/usecase error to the corresponding
+// fiber.Error with the correct HTTP status code:
+//
+//	domain.ErrAlreadyExists → 409 Conflict
+//	domain.ErrNotFound      → 404 Not Found
+//	domain.ErrInvalidInput  → 400 Bad Request
+//	anything else           → 500 Internal Server Error
 func usecaseErr(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrAlreadyExists):
@@ -50,6 +64,9 @@ func usecaseErr(err error) error {
 	}
 }
 
+// extractUsername extracts the "login" claim from the JWT token
+// stored in c.Locals("user"). Used by GET handlers that have
+// no request body to parse.
 func extractUsername(c *fiber.Ctx) (string, error) {
 	userToken, ok := c.Locals("user").(*jwt.Token)
 	if !ok {

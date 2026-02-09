@@ -1,3 +1,6 @@
+// Package auth implements the repo.AuthRepo interface backed by PostgreSQL.
+//
+// It uses squirrel as the SQL query builder and pgx as the PostgreSQL driver.
 package auth
 
 import (
@@ -10,19 +13,19 @@ import (
 	"github.com/Masterminds/squirrel"
 )
 
-// const _defaultEntityCap = 64
-
-// AuthRepo -.
+// AuthRepo is the PostgreSQL-backed implementation of repo.AuthRepo.
 type AuthRepo struct {
 	*postgres.Postgres
 	log domain.LoggerI
 }
 
-// New -.
+// New creates a new AuthRepo with the given connection pool and logger.
 func New(pg *postgres.Postgres, log domain.LoggerI) *AuthRepo {
 	return &AuthRepo{pg, log}
 }
 
+// RegisterUser inserts a new user into the "users" table.
+// The user's password must already be hashed (see usecase/hash).
 func (ps *AuthRepo) RegisterUser(ctx context.Context, user entity.User) error {
 	sql, args, err := ps.Builder.
 		Insert("users").
@@ -43,6 +46,8 @@ func (ps *AuthRepo) RegisterUser(ctx context.Context, user entity.User) error {
 	return nil
 }
 
+// CheckUser fetches the stored username and password hash by login.
+// The caller (usecase/auth) then compares the hash with the provided password.
 func (ps *AuthRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInput) (entity.User, error) {
 	var orUser entity.User
 
@@ -65,6 +70,7 @@ func (ps *AuthRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInpu
 	return orUser, nil
 }
 
+// GetUserID resolves a username to the numeric "id" primary key.
 func (ps *AuthRepo) GetUserID(ctx context.Context, username string) (int, error) {
 	var id int
 
@@ -85,6 +91,8 @@ func (ps *AuthRepo) GetUserID(ctx context.Context, username string) (int, error)
 	return id, nil
 }
 
+// DeleteUser removes a user row by its numeric ID.
+// Cascade deletion of related secrets is handled by the DB schema.
 func (ps *AuthRepo) DeleteUser(ctx context.Context, userID int) error {
 	sql, args, err := ps.Builder.
 		Delete("users").

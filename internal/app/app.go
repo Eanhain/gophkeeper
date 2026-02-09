@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/Eanhain/gophkeeper/config"
+	_ "github.com/Eanhain/gophkeeper/docs" // registers generated Swagger spec
 	"github.com/Eanhain/gophkeeper/internal/controller/restapi"
 	repoAuth "github.com/Eanhain/gophkeeper/internal/repo/persistent/auth"
 	repoSecrets "github.com/Eanhain/gophkeeper/internal/repo/persistent/secrets"

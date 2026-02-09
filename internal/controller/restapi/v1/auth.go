@@ -12,6 +12,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// CreateJWT generates a signed HS256 JWT for the given username.
+// The token contains the "login" claim and expires after 72 hours.
 func (r *V1) CreateJWT(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"login": username,
@@ -55,6 +57,12 @@ func (r *V1) LoginJWT(c *fiber.Ctx) error {
 
 // HandlerRegUser registers a new user and returns a JWT token.
 //
+// The flow is:
+//  1. Parse the request body into UserInput.
+//  2. Call RegUser (hashes the password and inserts into DB).
+//  3. Immediately authenticate (AuthUser) to verify the record.
+//  4. Generate a JWT and return it.
+//
 // @Summary      Register user
 // @Description  Creates a new user account, authenticates it and returns a JWT token
 // @Tags         auth
@@ -94,6 +102,8 @@ func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "User registered successfully"})
 }
 
+// AuthUser is a helper that parses the request body and verifies
+// the credentials via the auth usecase. Returns the username on success.
 func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
 	var user request.UserInput
 	if err := c.BodyParser(&user); err != nil {

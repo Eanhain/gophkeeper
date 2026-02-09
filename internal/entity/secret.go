@@ -1,5 +1,7 @@
 package entity
 
+// LoginPassword stores a website or service credential.
+// Login is the unique identifier within a single user's vault.
 type LoginPassword struct {
 	UserID   int    `json:"user_id" db:"user_id"`
 	Login    string `json:"login" db:"login"`
@@ -7,12 +9,16 @@ type LoginPassword struct {
 	Label    string `json:"label" db:"label"`
 }
 
+// TextSecret stores a free-form text note (API key, recovery phrase, etc.).
+// Title is the unique identifier within a single user's vault.
 type TextSecret struct {
 	UserID int    `json:"user_id" db:"user_id"`
 	Title  string `json:"title" db:"title"`
 	Body   string `json:"body" db:"body"`
 }
 
+// BinarySecret stores an arbitrary binary blob encoded in base64.
+// Filename is the unique identifier within a single user's vault.
 type BinarySecret struct {
 	UserID   int    `json:"user_id" db:"user_id"`
 	Filename string `json:"filename" db:"filename"`
@@ -20,6 +26,8 @@ type BinarySecret struct {
 	Data     string `json:"data" db:"data"`
 }
 
+// CardSecret stores bank card details.
+// Cardholder is the unique identifier within a single user's vault.
 type CardSecret struct {
 	UserID     int    `json:"user_id" db:"user_id"`
 	Cardholder string `json:"cardholder" db:"cardholder"`
@@ -30,6 +38,8 @@ type CardSecret struct {
 	Last4      string `json:"last4" db:"last4"`
 }
 
+// AllSecrets is a container returned by the "get all" endpoint.
+// It aggregates every secret type a user owns.
 type AllSecrets struct {
 	LoginPassword []LoginPassword `json:"login_password" db:"login_password"`
 	TextSecret    []TextSecret    `json:"text_secret" db:"text_secret"`
