@@ -2,37 +2,42 @@ package response
 
 import "github.com/Eanhain/gophkeeper/internal/entity"
 
+// LoginPassword represents a stored login-password pair in API responses.
 type LoginPassword struct {
-	Login    string `json:"login" db:"login"`
-	Password string `json:"password" db:"password"`
-	Label    string `json:"label" db:"label"`
+	Login    string `json:"login" example:"admin@example.com"`
+	Password string `json:"password" example:"myP@ssw0rd"`
+	Label    string `json:"label" example:"work email"`
 }
 
+// TextSecret represents a stored text note in API responses.
 type TextSecret struct {
-	Title string `json:"title" db:"title"`
-	Body  string `json:"body" db:"body"`
+	Title string `json:"title" example:"API key"`
+	Body  string `json:"body" example:"sk-proj-abc123..."`
 }
 
+// BinarySecret represents a stored binary file in API responses.
 type BinarySecret struct {
-	Filename string `json:"filename" db:"filename"`
-	MimeType string `json:"mime_type" db:"mime_type"`
-	Data     string `json:"data" db:"data"`
+	Filename string `json:"filename" example:"certificate.pem"`
+	MimeType string `json:"mime_type" example:"application/x-pem-file"`
+	Data     string `json:"data" example:"LS0tLS1CRUdJTi..."`
 }
 
+// CardSecret represents a stored bank card in API responses.
 type CardSecret struct {
-	Cardholder string `json:"cardholder" db:"cardholder"`
-	Pan        string `json:"pan" db:"pan"`
-	ExpMonth   string `json:"exp_month" db:"exp_month"`
-	ExpYear    string `json:"exp_year" db:"exp_year"`
-	Brand      string `json:"brand" db:"brand"`
-	Last4      string `json:"last4" db:"last4"`
+	Cardholder string `json:"cardholder" example:"John Doe"`
+	Pan        string `json:"pan" example:"4111111111111111"`
+	ExpMonth   string `json:"exp_month" example:"12"`
+	ExpYear    string `json:"exp_year" example:"2027"`
+	Brand      string `json:"brand" example:"Visa"`
+	Last4      string `json:"last4" example:"1111"`
 }
 
+// AllSecrets contains all secret types for a user.
 type AllSecrets struct {
-	LoginPassword []LoginPassword `json:"login_password" db:"login_password"`
-	TextSecret    []TextSecret    `json:"text_secret" db:"text_secret"`
-	BinarySecret  []BinarySecret  `json:"binary_secret" db:"binary_secret"`
-	CardSecret    []CardSecret    `json:"card_secret" db:"card_secret"`
+	LoginPassword []LoginPassword `json:"login_password"`
+	TextSecret    []TextSecret    `json:"text_secret"`
+	BinarySecret  []BinarySecret  `json:"binary_secret"`
+	CardSecret    []CardSecret    `json:"card_secret"`
 }
 
 func FromLoginPassword(value entity.LoginPassword) LoginPassword {

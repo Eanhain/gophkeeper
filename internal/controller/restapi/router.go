@@ -18,10 +18,16 @@ import (
 // NewRouter -.
 // Swagger spec:
 // @title       Gophkeeper API
-// @description Gophkeeper API
+// @description GophKeeper — secure vault for passwords, text notes, binary data and bank cards.
+// @description All request/response bodies under /v1 are AES-256-GCM encrypted (Content-Type: application/octet-stream).
+// @description Decrypt the response body with the shared crypto key to obtain JSON.
 // @version     1.0
 // @host        localhost:8080
 // @BasePath    /v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT token obtained from /api/user/login. Format: "Bearer {token}"
 func NewRouter(app *fiber.App, cfg *config.Config, t usecase.AuthUseCase, s usecase.SecretsUseCase, l domain.LoggerI) {
 
 	app.Use(fiberLogger.New(fiberLogger.Config{

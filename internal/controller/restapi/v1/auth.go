@@ -26,6 +26,18 @@ func (r *V1) CreateJWT(username string) (string, error) {
 	return tokenJWT, nil
 }
 
+// LoginJWT authenticates a user and returns a JWT token.
+//
+// @Summary      User login
+// @Description  Authenticates a user by login and password, returns a signed JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body request.UserInput true "User credentials"
+// @Success      200 {object} map[string]string "token"
+// @Failure      401 {object} map[string]string "unauthorized"
+// @Failure      500 {object} map[string]string "internal server error"
+// @Router       /api/user/login [post]
 func (r *V1) LoginJWT(c *fiber.Ctx) error {
 	username, err := r.AuthUser(c)
 	if err != nil {
@@ -41,6 +53,18 @@ func (r *V1) LoginJWT(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"token": tokenJWT})
 }
 
+// HandlerRegUser registers a new user and returns a JWT token.
+//
+// @Summary      Register user
+// @Description  Creates a new user account, authenticates it and returns a JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body request.UserInput true "New user credentials"
+// @Success      200 {object} map[string]string "message"
+// @Failure      409 {object} map[string]string "user already exists"
+// @Failure      500 {object} map[string]string "internal server error"
+// @Router       /api/user/register [post]
 func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 	var user request.UserInput
 	if err := c.BodyParser(&user); err != nil {
@@ -82,6 +106,18 @@ func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
 	return user.Login, c.JSON(fiber.Map{"message": "User authenticated successfully"})
 }
 
+// DeleteUser deletes the authenticated user's account.
+//
+// @Summary      Delete user
+// @Description  Deletes the currently authenticated user's account
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} map[string]string "message"
+// @Failure      401 {object} map[string]string "unauthorized"
+// @Failure      500 {object} map[string]string "internal server error"
+// @Router       /api/user/delete-user [delete]
 func (r *V1) DeleteUser(c *fiber.Ctx) error {
 	userToken := c.Locals("user").(*jwt.Token)
 	claims := userToken.Claims.(jwt.MapClaims)
