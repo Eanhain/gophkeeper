@@ -32,22 +32,27 @@ func New(r repo.AuthRepo, log domain.LoggerI) *UseCase {
 	}
 }
 
-// AuthUser verifies the user's credentials.
-// It fetches the stored hash from the repository and compares it
-// with the password supplied in [entity.UserInput] using argon2id.
-// Returns true when the credentials are valid.
-func (s *UseCase) AuthUser(ctx context.Context, user entity.UserInput) (bool, error) {
+// AuthUser verifies the user's credentials and derives the per-user
+// encryption key from the password and stored salt using Argon2id.
+// Returns (true, cryptoKey, nil) when the credentials are valid.
+// The cryptoKey is a hex-encoded 32-byte AES-256 key.
+func (s *UseCase) AuthUser(ctx context.Context, user entity.UserInput) (bool, string, error) {
 	tUser, err := s.repo.CheckUser(ctx, user)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	ok := hash.VerifyUserHash(s.log, user, tUser)
-	return ok, nil
+	if !ok {
+		return false, "", nil
+	}
+	cryptoKey := hash.DeriveEncryptionKey(user.Password, tUser.CryptoSalt)
+	return true, cryptoKey, nil
 }
 
 // RegUser registers a new user. The password is hashed with argon2id
-// before being persisted. If the username already exists (PostgreSQL
-// unique-constraint violation), domain.ErrConflict is returned.
+// and a random crypto salt is generated before being persisted.
+// If the username already exists (PostgreSQL unique-constraint violation),
+// domain.ErrConflict is returned.
 func (s *UseCase) RegUser(ctx context.Context, user entity.UserInput) error {
 	var pgErr *pgconn.PgError
 	hashedUser := hash.CreateUserHash(s.log, user)
@@ -57,12 +62,11 @@ func (s *UseCase) RegUser(ctx context.Context, user entity.UserInput) error {
 		err = domain.ErrConflict
 		return err
 	}
-	_, err = s.repo.GetUserID(ctx, user.Login)
 	if err != nil {
 		return err
 	}
 
-	return err
+	return nil
 }
 
 // DeleteUser removes the user account and all associated data.

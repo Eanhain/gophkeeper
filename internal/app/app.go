@@ -36,7 +36,7 @@ func Run(cfg *config.Config) { //nolint: gocyclo,cyclop,funlen,gocritic,nolintli
 		l,
 	)
 	secretsUseCase := secrets.New(
-		repoSecrets.New(pg, l, cfg.Crypto.Key),
+		repoSecrets.New(pg, l),
 		l,
 	)
 	// HTTP Server

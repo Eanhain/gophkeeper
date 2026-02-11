@@ -17,6 +17,11 @@ const docTemplate = `{
     "paths": {
         "/api/user/delete-user": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes the currently authenticated user's account",
                 "consumes": [
                     "application/json"
@@ -56,12 +61,7 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/login": {
@@ -84,7 +84,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.UserInput"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput"
                         }
                     }
                 ],
@@ -139,7 +139,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.UserInput"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput"
                         }
                     }
                 ],
@@ -176,6 +176,11 @@ const docTemplate = `{
         },
         "/api/user/secret/delete-binary-secret": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a stored binary secret identified by the filename field",
                 "consumes": [
                     "application/json"
@@ -194,7 +199,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.DeleteBinarySecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteBinarySecret"
                         }
                     }
                 ],
@@ -244,16 +249,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/delete-card-secret": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a stored card secret identified by the cardholder field",
                 "consumes": [
                     "application/json"
@@ -272,7 +277,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.DeleteCardSecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteCardSecret"
                         }
                     }
                 ],
@@ -322,16 +327,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/delete-login-password": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a stored login-password secret identified by the login field",
                 "consumes": [
                     "application/json"
@@ -350,7 +355,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.DeleteLoginPassword"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteLoginPassword"
                         }
                     }
                 ],
@@ -400,16 +405,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/delete-text-secret": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Deletes a stored text secret identified by the title field",
                 "consumes": [
                     "application/json"
@@ -428,7 +433,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.DeleteTextSecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteTextSecret"
                         }
                     }
                 ],
@@ -478,16 +483,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/get-all-secrets": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Returns all stored secrets (login-passwords, text, binary, cards) for the current user",
                 "produces": [
                     "application/json"
@@ -500,7 +505,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.AllSecrets"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.AllSecrets"
                         }
                     },
                     "401": {
@@ -521,16 +526,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/get-binary-secret": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Returns all stored binary secrets for the current user",
                 "produces": [
                     "application/json"
@@ -545,7 +550,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/response.BinarySecret"
+                                "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret"
                             }
                         }
                     },
@@ -567,16 +572,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/get-card-secret": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Returns all stored card secrets for the current user",
                 "produces": [
                     "application/json"
@@ -591,7 +596,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/response.CardSecret"
+                                "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret"
                             }
                         }
                     },
@@ -613,16 +618,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/get-login-password": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Returns all stored login-password secrets for the current user",
                 "produces": [
                     "application/json"
@@ -637,7 +642,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/response.LoginPassword"
+                                "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword"
                             }
                         }
                     },
@@ -659,16 +664,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/get-text-secret": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Returns all stored text secrets for the current user",
                 "produces": [
                     "application/json"
@@ -683,7 +688,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/response.TextSecret"
+                                "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret"
                             }
                         }
                     },
@@ -705,16 +710,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/post-binary-secret": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Stores a new binary secret (file) for the authenticated user. Data should be base64-encoded.",
                 "consumes": [
                     "application/json"
@@ -733,7 +738,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.BinarySecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.BinarySecret"
                         }
                     }
                 ],
@@ -783,16 +788,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/post-card-secret": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Stores a new bank card secret for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -811,7 +816,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.CardSecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.CardSecret"
                         }
                     }
                 ],
@@ -861,16 +866,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/post-login-password": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Stores a new login-password secret for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -889,7 +894,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.LoginPassword"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.LoginPassword"
                         }
                     }
                 ],
@@ -939,16 +944,16 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         },
         "/api/user/secret/post-text-secret": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Stores a new text secret for the authenticated user",
                 "consumes": [
                     "application/json"
@@ -967,7 +972,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.TextSecret"
+                            "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.TextSecret"
                         }
                     }
                 ],
@@ -1017,17 +1022,12 @@ const docTemplate = `{
                             }
                         }
                     }
-                },
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ]
+                }
             }
         }
     },
     "definitions": {
-        "request.BinarySecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.BinarySecret": {
             "type": "object",
             "properties": {
                 "data": {
@@ -1044,7 +1044,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.CardSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.CardSecret": {
             "type": "object",
             "properties": {
                 "brand": {
@@ -1073,7 +1073,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.DeleteBinarySecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteBinarySecret": {
             "type": "object",
             "properties": {
                 "filename": {
@@ -1082,7 +1082,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.DeleteCardSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteCardSecret": {
             "type": "object",
             "properties": {
                 "cardholder": {
@@ -1091,7 +1091,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.DeleteLoginPassword": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteLoginPassword": {
             "type": "object",
             "properties": {
                 "login": {
@@ -1100,7 +1100,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.DeleteTextSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteTextSecret": {
             "type": "object",
             "properties": {
                 "title": {
@@ -1109,7 +1109,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.LoginPassword": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.LoginPassword": {
             "type": "object",
             "properties": {
                 "label": {
@@ -1126,7 +1126,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.TextSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.TextSecret": {
             "type": "object",
             "properties": {
                 "body": {
@@ -1139,7 +1139,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.UserInput": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput": {
             "type": "object",
             "properties": {
                 "login": {
@@ -1152,36 +1152,36 @@ const docTemplate = `{
                 }
             }
         },
-        "response.AllSecrets": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.AllSecrets": {
             "type": "object",
             "properties": {
                 "binary_secret": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/response.BinarySecret"
+                        "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret"
                     }
                 },
                 "card_secret": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/response.CardSecret"
+                        "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret"
                     }
                 },
                 "login_password": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/response.LoginPassword"
+                        "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword"
                     }
                 },
                 "text_secret": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/response.TextSecret"
+                        "$ref": "#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret"
                     }
                 }
             }
         },
-        "response.BinarySecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret": {
             "type": "object",
             "properties": {
                 "data": {
@@ -1198,7 +1198,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.CardSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret": {
             "type": "object",
             "properties": {
                 "brand": {
@@ -1227,7 +1227,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.LoginPassword": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword": {
             "type": "object",
             "properties": {
                 "label": {
@@ -1244,7 +1244,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.TextSecret": {
+        "github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret": {
             "type": "object",
             "properties": {
                 "body": {
@@ -1275,7 +1275,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "Gophkeeper API",
-	Description:      "GophKeeper — secure vault for passwords, text notes, binary data and bank cards.\n\n## Encryption Protocol\nAll request/response bodies under /v1 are **AES-256-GCM encrypted**.\nThe encryption key is derived as `SHA-256(CRYPTO_KEY)` — both client and server must share the same `CRYPTO_KEY`.\n\n### Request flow (client → server):\n1. Serialize the JSON payload.\n2. Encrypt with AES-256-GCM: `nonce (12 bytes) || ciphertext`.\n3. Send the raw bytes with `Content-Type: application/octet-stream`.\n\n### Response flow (server → client):\n1. Server handler produces JSON.\n2. CryptoMiddleware encrypts it: `nonce (12 bytes) || ciphertext`.\n3. Response is sent with `Content-Type: application/octet-stream`.\n4. Client decrypts to get the original JSON.\n\n**Note:** Swagger \"Try it out\" will NOT work because the UI sends plain JSON. Use the GophKeeper TUI client or encrypt requests manually.\n\n### Using the API without encryption\nThe REST API **cannot** be called with plain JSON — the CryptoMiddleware will reject unencrypted bodies with HTTP 400.\nTo test manually, use a script that encrypts/decrypts with the shared key (see `gophkeeper-client/internal/crypto`).",
+	Description:      "GophKeeper — secure vault for passwords, text notes, binary data and bank cards.\n\n## Security\nData at rest is encrypted per-user with AES-256-GCM.\nEncryption keys are derived from user passwords using Argon2id.\nTransport security should be provided by TLS.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

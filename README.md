@@ -2,7 +2,7 @@
 
 Серверная часть менеджера секретов GophKeeper.  
 Хранит пароли, текстовые заметки, бинарные файлы и банковские карты в PostgreSQL.  
-Чувствительные поля (пароли, PAN, тела заметок, бинарные данные) шифруются на уровне БД через `pgcrypto` (`pgp_sym_encrypt` / `pgp_sym_decrypt`).
+Чувствительные поля шифруются на уровне приложения (AES-256-GCM) индивидуальным ключом для каждого пользователя, который выводится из пароля через Argon2id.
 
 ## Архитектура
 
@@ -17,7 +17,11 @@ internal/
   entity/                — доменные модели
 domain/                  — общие интерфейсы (LoggerI) и sentinel-ошибки
 config/                  — конфигурация из .env
-pkg/                     — общие пакеты (postgres, httpserver, logger)
+pkg/
+  crypto/                — AES-256-GCM шифрование, Argon2id KDF
+  postgres/              — обёртка над pgxpool
+  httpserver/            — обёртка над Fiber
+  logger/                — структурированный логгер
 migrations/              — SQL-миграции (golang-migrate)
 docs/                    — сгенерированная Swagger-документация
 ```
@@ -25,7 +29,7 @@ docs/                    — сгенерированная Swagger-докуме
 ## Требования
 
 - Go 1.25+
-- PostgreSQL 15+ (с расширением `pgcrypto`)
+- PostgreSQL 15+
 - Docker (опционально, для поднятия БД)
 
 ## Быстрый старт
@@ -44,7 +48,7 @@ docker run -d \
 
 ### 2. Настроить .env
 
-Скопировать `.env` в корень проекта (уже лежит) и при необходимости поменять значения:
+Скопировать `.env` в корень проекта и при необходимости поменять значения:
 
 ```env
 APP_NAME=gophkeeper
@@ -54,22 +58,16 @@ HTTP_USE_PREFORK_MODE=false
 LOG_LEVEL=debug
 PG_POOL_MAX=2
 PG_URL=postgres://db_user:s3cret@localhost:5432/gophkeeper
-CRYPTO_KEY=change-me
+JWT_SECRET=your-strong-secret-here
 SWAGGER_ENABLED=true
 ```
 
-**Важно:** `CRYPTO_KEY` — симметричный ключ, должен совпадать на клиенте и сервере.
+**Важно:** `JWT_SECRET` — обязательная переменная, дефолтного значения нет. Если не задать — сервер не запустится (fail early).
 
 ### 3. Применить миграции
 
 ```bash
 go run -tags migrate ./cmd/app
-```
-
-Для отката:
-
-```bash
-go run -tags migrate ./cmd/app -- --migrate-down
 ```
 
 ### 4. Запустить сервер
@@ -88,27 +86,24 @@ go run ./cmd/app
 http://localhost:8080/swagger/index.html
 ```
 
-> **Примечание:** кнопка "Try it out" не работает, потому что все тела запросов/ответов шифруются AES-256-GCM. Swagger показывает структуру JSON до шифрования.
+API принимает и отдаёт обычный JSON — Swagger "Try it out" работает (при наличии валидного JWT-токена).
 
-## Протокол шифрования
+## Схема шифрования
 
-Все эндпоинты `/v1/*` проходят через `CryptoMiddleware`:
+Шифрование данных at rest выполняется **индивидуально для каждого пользователя**:
 
-1. **Запрос (клиент → сервер):**
-   - Клиент сериализует JSON, шифрует AES-256-GCM (ключ = `SHA-256(CRYPTO_KEY)`).
-   - Отправляет `nonce (12 байт) || ciphertext` с `Content-Type: application/octet-stream`.
+1. При регистрации генерируется случайный 16-байтовый `crypto_salt` и сохраняется в таблицу `users`.
+2. При логине из пароля пользователя и его `crypto_salt` через **Argon2id** выводится 256-битный ключ шифрования.
+3. Этот ключ передаётся в JWT-токене (claim `crypto_key`) и используется при каждом запросе для шифрования/расшифровки чувствительных полей.
+4. Шифрование — **AES-256-GCM** на уровне приложения (в Go-коде), а не в БД.
 
-2. **Ответ (сервер → клиент):**
-   - Сервер формирует JSON, middleware шифрует его тем же способом.
-   - Клиент расшифровывает и получает JSON.
-
-**Без шифрования API использовать нельзя** — middleware вернёт HTTP 400.
+**Важно:** транспортная безопасность обеспечивается через TLS. HTTP-тела передаются как обычный JSON.
 
 ## API эндпоинты
 
 | Метод  | Путь                                       | Описание                    | Авторизация |
 |--------|--------------------------------------------|-----------------------------|-------------|
-| POST   | `/v1/api/user/register`                    | Регистрация                 | —           |
+| POST   | `/v1/api/user/register`                    | Регистрация, возвращает JWT | —           |
 | POST   | `/v1/api/user/login`                       | Логин, возвращает JWT       | —           |
 | DELETE | `/v1/api/user/delete-user`                 | Удалить аккаунт             | JWT         |
 | POST   | `/v1/api/user/secret/post-login-password`  | Создать логин/пароль        | JWT         |
@@ -132,27 +127,31 @@ go test ./...
 ```
 
 Покрытие по ключевым пакетам:
-- `internal/usecase/auth` — 100%
-- `internal/usecase/secrets` — 92%+
-- `internal/controller/restapi/v1` — 85%+
-- `internal/controller/restapi/middleware` — 93%+
+- `pkg/crypto` — шифрование, KDF, round-trip
+- `internal/usecase/auth` — регистрация, аутентификация, crypto key derivation
+- `internal/usecase/secrets` — CRUD секретов с per-user ключом
+- `internal/controller/restapi/v1` — API-хендлеры (моки + httptest)
+- `internal/controller/restapi/middleware` — recovery middleware
 
 ## Перегенерация Swagger
 
 После изменения аннотаций в хендлерах:
 
 ```bash
-go tool swag init -g internal/controller/restapi/router.go
+swag init -g internal/controller/restapi/router.go -o docs --parseDependency --parseInternal
 ```
 
 ## Структура БД
 
 ```
-users              — пользователи (username, password_hash)
-user_credentials   — логины/пароли (password_enc — pgcrypto)
-user_text_items    — текстовые заметки (body — pgcrypto)
-user_binary_items  — бинарные данные (data — pgcrypto)
-user_cards         — банковские карты (pan_enc — pgcrypto)
+users              — пользователи (username, password_hash, crypto_salt)
+user_credentials   — логины/пароли (password_enc — AES-256-GCM BYTEA)
+user_text_items    — текстовые заметки (body — AES-256-GCM BYTEA)
+user_binary_items  — бинарные данные (data — AES-256-GCM BYTEA)
+user_cards         — банковские карты (pan_enc — AES-256-GCM BYTEA)
 ```
 
-Все секреты привязаны к пользователю через `user_id` с `ON DELETE CASCADE`.
+- Первичные ключи — `INT GENERATED ALWAYS AS IDENTITY` (IDENTITY вместо SERIAL).
+- Строковые колонки — `VARCHAR(n)` с ограничением длины.
+- Все секреты привязаны к пользователю через `user_id` с `ON DELETE CASCADE`.
+- Расширение `pgcrypto` **не требуется** — шифрование выполняется на уровне приложения.

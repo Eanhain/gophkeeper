@@ -56,12 +56,15 @@ func TestAuthUser_Success(t *testing.T) {
 	}
 	uc := auth.New(repo, log)
 
-	ok, err := uc.AuthUser(context.Background(), input)
+	ok, cryptoKey, err := uc.AuthUser(context.Background(), input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !ok {
 		t.Fatal("expected auth to succeed")
+	}
+	if cryptoKey == "" {
+		t.Fatal("expected non-empty crypto key")
 	}
 }
 
@@ -76,12 +79,15 @@ func TestAuthUser_WrongPassword(t *testing.T) {
 	}
 	uc := auth.New(repo, log)
 
-	ok, err := uc.AuthUser(context.Background(), entity.UserInput{Login: "testuser", Password: "wrong"})
+	ok, cryptoKey, err := uc.AuthUser(context.Background(), entity.UserInput{Login: "testuser", Password: "wrong"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if ok {
 		t.Fatal("expected auth to fail with wrong password")
+	}
+	if cryptoKey != "" {
+		t.Fatal("expected empty crypto key on failed auth")
 	}
 }
 
@@ -93,7 +99,7 @@ func TestAuthUser_RepoError(t *testing.T) {
 	}
 	uc := auth.New(repo, log)
 
-	_, err := uc.AuthUser(context.Background(), entity.UserInput{Login: "u", Password: "p"})
+	_, _, err := uc.AuthUser(context.Background(), entity.UserInput{Login: "u", Password: "p"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -103,8 +109,12 @@ func TestAuthUser_RepoError(t *testing.T) {
 
 func TestRegUser_Success(t *testing.T) {
 	repo := &mockAuthRepo{
-		registerUserFn: func(_ context.Context, _ entity.User) error { return nil },
-		getUserIDFn:    func(_ context.Context, _ string) (int, error) { return 1, nil },
+		registerUserFn: func(_ context.Context, u entity.User) error {
+			if len(u.CryptoSalt) == 0 {
+				t.Fatal("expected non-empty crypto salt")
+			}
+			return nil
+		},
 	}
 	uc := auth.New(repo, log)
 
@@ -131,20 +141,6 @@ func TestRegUser_Conflict(t *testing.T) {
 func TestRegUser_RegisterError(t *testing.T) {
 	repo := &mockAuthRepo{
 		registerUserFn: func(_ context.Context, _ entity.User) error { return errors.New("db") },
-		getUserIDFn:    func(_ context.Context, _ string) (int, error) { return 1, nil },
-	}
-	uc := auth.New(repo, log)
-
-	err := uc.RegUser(context.Background(), entity.UserInput{Login: "u", Password: "p"})
-	if err != nil {
-		t.Logf("got expected non-nil error after register: %v", err)
-	}
-}
-
-func TestRegUser_GetUserIDError(t *testing.T) {
-	repo := &mockAuthRepo{
-		registerUserFn: func(_ context.Context, _ entity.User) error { return nil },
-		getUserIDFn:    func(_ context.Context, _ string) (int, error) { return 0, errors.New("not found") },
 	}
 	uc := auth.New(repo, log)
 

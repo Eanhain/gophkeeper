@@ -62,10 +62,10 @@ func init() {
 		}
 		if errors.Is(err, migrate.ErrNoChange) {
 			log.Printf("Migrate: no change")
-			return
+			os.Exit(0)
 		}
 		log.Printf("Migrate: down success")
-		return
+		os.Exit(0)
 	}
 
 	err = m.Up()

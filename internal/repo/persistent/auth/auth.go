@@ -26,11 +26,12 @@ func New(pg *postgres.Postgres, log domain.LoggerI) *AuthRepo {
 
 // RegisterUser inserts a new user into the "users" table.
 // The user's password must already be hashed (see usecase/hash).
+// CryptoSalt is stored alongside the user for per-user encryption key derivation.
 func (ps *AuthRepo) RegisterUser(ctx context.Context, user entity.User) error {
 	sql, args, err := ps.Builder.
 		Insert("users").
-		Columns("username", "password_hash").
-		Values(user.Login, user.Hash).
+		Columns("username", "password_hash", "crypto_salt").
+		Values(user.Login, user.Hash, user.CryptoSalt).
 		ToSql()
 
 	if err != nil {
@@ -46,13 +47,14 @@ func (ps *AuthRepo) RegisterUser(ctx context.Context, user entity.User) error {
 	return nil
 }
 
-// CheckUser fetches the stored username and password hash by login.
-// The caller (usecase/auth) then compares the hash with the provided password.
+// CheckUser fetches the stored username, password hash and crypto salt by login.
+// The caller (usecase/auth) then compares the hash with the provided password
+// and derives the encryption key from password + salt.
 func (ps *AuthRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInput) (entity.User, error) {
 	var orUser entity.User
 
 	sql, args, err := ps.Builder.
-		Select("username", "password_hash").
+		Select("username", "password_hash", "crypto_salt").
 		From("users").
 		Where(squirrel.Eq{"username": untrustedUser.Login}).
 		ToSql()
@@ -62,7 +64,7 @@ func (ps *AuthRepo) CheckUser(ctx context.Context, untrustedUser entity.UserInpu
 	}
 
 	row := ps.Pool.QueryRow(ctx, sql, args...)
-	if err := row.Scan(&orUser.Login, &orUser.Hash); err != nil {
+	if err := row.Scan(&orUser.Login, &orUser.Hash, &orUser.CryptoSalt); err != nil {
 		return entity.User{}, err
 	}
 

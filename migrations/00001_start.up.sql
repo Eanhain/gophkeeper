@@ -1,51 +1,50 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 -- Владелец (учётка для входа в систему)
 CREATE TABLE IF NOT EXISTS users (
-  id            SERIAL PRIMARY KEY,
-  username      TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,            -- без UNIQUE
+  id            INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  username      VARCHAR(128) NOT NULL UNIQUE,
+  password_hash VARCHAR(512) NOT NULL,
+  crypto_salt   BYTEA NOT NULL,               -- per-user salt for Argon2 encryption key derivation
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
 -- Пары логин/пароль (много записей на пользователя)
 CREATE TABLE IF NOT EXISTS user_credentials (
-  id           SERIAL PRIMARY KEY,
+  id           INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  login        TEXT NOT NULL,
-  password_enc BYTEA NOT NULL,            -- зашифрованный пароль
-  label        TEXT,                      -- название/метка сервиса
+  login        VARCHAR(256) NOT NULL,
+  password_enc BYTEA NOT NULL,                -- AES-256-GCM encrypted password
+  label        VARCHAR(256),                  -- название/метка сервиса
   created_at   TIMESTAMPTZ DEFAULT now()
 );
 
 -- Произвольные текстовые данные
 CREATE TABLE IF NOT EXISTS user_text_items (
-  id         SERIAL PRIMARY KEY,
+  id         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title      TEXT,
-  body       BYTEA NOT NULL,              -- зашифрованный текст
+  title      VARCHAR(256),
+  body       BYTEA NOT NULL,                  -- AES-256-GCM encrypted text
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Произвольные бинарные данные
 CREATE TABLE IF NOT EXISTS user_binary_items (
-  id         SERIAL PRIMARY KEY,
+  id         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  filename   TEXT,
-  mime_type  TEXT,
-  data       BYTEA NOT NULL,              -- бинарные данные
+  filename   VARCHAR(512),
+  mime_type  VARCHAR(128),
+  data       BYTEA NOT NULL,                  -- AES-256-GCM encrypted binary data
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Данные банковских карт
 CREATE TABLE IF NOT EXISTS user_cards (
-  id           SERIAL PRIMARY KEY,
+  id           INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id      INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  cardholder   TEXT,
-  pan_enc      BYTEA NOT NULL,            -- зашифрованный PAN
+  cardholder   VARCHAR(256),
+  pan_enc      BYTEA NOT NULL,                -- AES-256-GCM encrypted PAN
   exp_month    SMALLINT NOT NULL CHECK (exp_month BETWEEN 1 AND 12),
   exp_year     SMALLINT NOT NULL,
-  brand        TEXT,
+  brand        VARCHAR(64),
   last4        CHAR(4),
   created_at   TIMESTAMPTZ DEFAULT now()
 );

@@ -21,6 +21,7 @@ import (
 )
 
 const testSecret = "test-jwt-secret"
+const testCryptoKey = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 
 type noopLogger struct{}
 
@@ -30,10 +31,12 @@ func (l *noopLogger) Warn(msg string, args ...interface{})       {}
 func (l *noopLogger) Error(msg interface{}, args ...interface{}) {}
 func (l *noopLogger) Fatal(msg interface{}, args ...interface{}) {}
 
+// createToken создаёт JWT-токен с claim-ами login и crypto_key.
 func createToken(username string) string {
 	claims := jwt.MapClaims{
-		"login": username,
-		"exp":   time.Now().Add(time.Hour).Unix(),
+		"login":      username,
+		"crypto_key": testCryptoKey,
+		"exp":        time.Now().Add(time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	s, _ := token.SignedString([]byte(testSecret))
@@ -50,19 +53,20 @@ func jwtConf() jwtware.Config {
 	}
 }
 
-// --- mock AuthUseCase ---
+// --- мок AuthUseCase ---
 
 type mockAuthUC struct {
-	authUserFn   func(ctx context.Context, user entity.UserInput) (bool, error)
+	// AuthUser теперь возвращает (bool, string, error) — ok, cryptoKey, err
+	authUserFn   func(ctx context.Context, user entity.UserInput) (bool, string, error)
 	regUserFn    func(ctx context.Context, user entity.UserInput) error
 	deleteUserFn func(ctx context.Context, user entity.UserInput) error
 }
 
-func (m *mockAuthUC) AuthUser(ctx context.Context, user entity.UserInput) (bool, error) {
+func (m *mockAuthUC) AuthUser(ctx context.Context, user entity.UserInput) (bool, string, error) {
 	if m.authUserFn != nil {
 		return m.authUserFn(ctx, user)
 	}
-	return true, nil
+	return true, testCryptoKey, nil
 }
 func (m *mockAuthUC) RegUser(ctx context.Context, user entity.UserInput) error {
 	if m.regUserFn != nil {
@@ -77,120 +81,123 @@ func (m *mockAuthUC) DeleteUser(ctx context.Context, user entity.UserInput) erro
 	return nil
 }
 
-// --- mock SecretsUseCase ---
+// --- мок SecretsUseCase ---
+// Все методы теперь принимают cryptoKey string (второй параметр после username).
 
 type mockSecretsUC struct {
-	createLoginPasswordFn func(ctx context.Context, username string, lp request.LoginPassword) error
-	getLoginPasswordsFn   func(ctx context.Context, username string) ([]entity.LoginPassword, error)
-	deleteLoginPasswordFn func(ctx context.Context, username string, login string) error
-	createTextSecretFn    func(ctx context.Context, username string, ts request.TextSecret) error
-	getTextSecretsFn      func(ctx context.Context, username string) ([]entity.TextSecret, error)
-	deleteTextSecretFn    func(ctx context.Context, username string, title string) error
-	createBinarySecretFn  func(ctx context.Context, username string, bs request.BinarySecret) error
-	getBinarySecretsFn    func(ctx context.Context, username string) ([]entity.BinarySecret, error)
-	deleteBinarySecretFn  func(ctx context.Context, username string, filename string) error
-	createCardSecretFn    func(ctx context.Context, username string, cs request.CardSecret) error
-	getCardSecretsFn      func(ctx context.Context, username string) ([]entity.CardSecret, error)
-	deleteCardSecretFn    func(ctx context.Context, username string, cardholder string) error
-	getAllSecretsFn       func(ctx context.Context, username string) (entity.AllSecrets, error)
+	createLoginPasswordFn func(ctx context.Context, username, cryptoKey string, lp request.LoginPassword) error
+	getLoginPasswordsFn   func(ctx context.Context, username, cryptoKey string) ([]entity.LoginPassword, error)
+	deleteLoginPasswordFn func(ctx context.Context, username, cryptoKey string, login string) error
+	createTextSecretFn    func(ctx context.Context, username, cryptoKey string, ts request.TextSecret) error
+	getTextSecretsFn      func(ctx context.Context, username, cryptoKey string) ([]entity.TextSecret, error)
+	deleteTextSecretFn    func(ctx context.Context, username, cryptoKey string, title string) error
+	createBinarySecretFn  func(ctx context.Context, username, cryptoKey string, bs request.BinarySecret) error
+	getBinarySecretsFn    func(ctx context.Context, username, cryptoKey string) ([]entity.BinarySecret, error)
+	deleteBinarySecretFn  func(ctx context.Context, username, cryptoKey string, filename string) error
+	createCardSecretFn    func(ctx context.Context, username, cryptoKey string, cs request.CardSecret) error
+	getCardSecretsFn      func(ctx context.Context, username, cryptoKey string) ([]entity.CardSecret, error)
+	deleteCardSecretFn    func(ctx context.Context, username, cryptoKey string, cardholder string) error
+	getAllSecretsFn       func(ctx context.Context, username, cryptoKey string) (entity.AllSecrets, error)
 }
 
-func (m *mockSecretsUC) CreateLoginPassword(ctx context.Context, u string, lp request.LoginPassword) error {
+func (m *mockSecretsUC) CreateLoginPassword(ctx context.Context, u, ck string, lp request.LoginPassword) error {
 	if m.createLoginPasswordFn != nil {
-		return m.createLoginPasswordFn(ctx, u, lp)
+		return m.createLoginPasswordFn(ctx, u, ck, lp)
 	}
 	return nil
 }
-func (m *mockSecretsUC) GetLoginPasswords(ctx context.Context, u string) ([]entity.LoginPassword, error) {
+func (m *mockSecretsUC) GetLoginPasswords(ctx context.Context, u, ck string) ([]entity.LoginPassword, error) {
 	if m.getLoginPasswordsFn != nil {
-		return m.getLoginPasswordsFn(ctx, u)
+		return m.getLoginPasswordsFn(ctx, u, ck)
 	}
 	return nil, nil
 }
-func (m *mockSecretsUC) DeleteLoginPassword(ctx context.Context, u string, login string) error {
+func (m *mockSecretsUC) DeleteLoginPassword(ctx context.Context, u, ck string, login string) error {
 	if m.deleteLoginPasswordFn != nil {
-		return m.deleteLoginPasswordFn(ctx, u, login)
+		return m.deleteLoginPasswordFn(ctx, u, ck, login)
 	}
 	return nil
 }
-func (m *mockSecretsUC) CreateTextSecret(ctx context.Context, u string, ts request.TextSecret) error {
+func (m *mockSecretsUC) CreateTextSecret(ctx context.Context, u, ck string, ts request.TextSecret) error {
 	if m.createTextSecretFn != nil {
-		return m.createTextSecretFn(ctx, u, ts)
+		return m.createTextSecretFn(ctx, u, ck, ts)
 	}
 	return nil
 }
-func (m *mockSecretsUC) GetTextSecrets(ctx context.Context, u string) ([]entity.TextSecret, error) {
+func (m *mockSecretsUC) GetTextSecrets(ctx context.Context, u, ck string) ([]entity.TextSecret, error) {
 	if m.getTextSecretsFn != nil {
-		return m.getTextSecretsFn(ctx, u)
+		return m.getTextSecretsFn(ctx, u, ck)
 	}
 	return nil, nil
 }
-func (m *mockSecretsUC) DeleteTextSecret(ctx context.Context, u string, title string) error {
+func (m *mockSecretsUC) DeleteTextSecret(ctx context.Context, u, ck string, title string) error {
 	if m.deleteTextSecretFn != nil {
-		return m.deleteTextSecretFn(ctx, u, title)
+		return m.deleteTextSecretFn(ctx, u, ck, title)
 	}
 	return nil
 }
-func (m *mockSecretsUC) CreateBinarySecret(ctx context.Context, u string, bs request.BinarySecret) error {
+func (m *mockSecretsUC) CreateBinarySecret(ctx context.Context, u, ck string, bs request.BinarySecret) error {
 	if m.createBinarySecretFn != nil {
-		return m.createBinarySecretFn(ctx, u, bs)
+		return m.createBinarySecretFn(ctx, u, ck, bs)
 	}
 	return nil
 }
-func (m *mockSecretsUC) GetBinarySecrets(ctx context.Context, u string) ([]entity.BinarySecret, error) {
+func (m *mockSecretsUC) GetBinarySecrets(ctx context.Context, u, ck string) ([]entity.BinarySecret, error) {
 	if m.getBinarySecretsFn != nil {
-		return m.getBinarySecretsFn(ctx, u)
+		return m.getBinarySecretsFn(ctx, u, ck)
 	}
 	return nil, nil
 }
-func (m *mockSecretsUC) DeleteBinarySecret(ctx context.Context, u string, filename string) error {
+func (m *mockSecretsUC) DeleteBinarySecret(ctx context.Context, u, ck string, filename string) error {
 	if m.deleteBinarySecretFn != nil {
-		return m.deleteBinarySecretFn(ctx, u, filename)
+		return m.deleteBinarySecretFn(ctx, u, ck, filename)
 	}
 	return nil
 }
-func (m *mockSecretsUC) CreateCardSecret(ctx context.Context, u string, cs request.CardSecret) error {
+func (m *mockSecretsUC) CreateCardSecret(ctx context.Context, u, ck string, cs request.CardSecret) error {
 	if m.createCardSecretFn != nil {
-		return m.createCardSecretFn(ctx, u, cs)
+		return m.createCardSecretFn(ctx, u, ck, cs)
 	}
 	return nil
 }
-func (m *mockSecretsUC) GetCardSecrets(ctx context.Context, u string) ([]entity.CardSecret, error) {
+func (m *mockSecretsUC) GetCardSecrets(ctx context.Context, u, ck string) ([]entity.CardSecret, error) {
 	if m.getCardSecretsFn != nil {
-		return m.getCardSecretsFn(ctx, u)
+		return m.getCardSecretsFn(ctx, u, ck)
 	}
 	return nil, nil
 }
-func (m *mockSecretsUC) DeleteCardSecret(ctx context.Context, u string, cardholder string) error {
+func (m *mockSecretsUC) DeleteCardSecret(ctx context.Context, u, ck string, cardholder string) error {
 	if m.deleteCardSecretFn != nil {
-		return m.deleteCardSecretFn(ctx, u, cardholder)
+		return m.deleteCardSecretFn(ctx, u, ck, cardholder)
 	}
 	return nil
 }
-func (m *mockSecretsUC) GetAllSecrets(ctx context.Context, u string) (entity.AllSecrets, error) {
+func (m *mockSecretsUC) GetAllSecrets(ctx context.Context, u, ck string) (entity.AllSecrets, error) {
 	if m.getAllSecretsFn != nil {
-		return m.getAllSecretsFn(ctx, u)
+		return m.getAllSecretsFn(ctx, u, ck)
 	}
 	return entity.AllSecrets{}, nil
 }
 
-// --- helpers ---
+// --- вспомогательные функции ---
 
 func parseJSON(t *testing.T, r io.Reader) map[string]interface{} {
 	t.Helper()
 	var result map[string]interface{}
 	if err := json.NewDecoder(r).Decode(&result); err != nil {
-		t.Fatalf("parse json: %v", err)
+		t.Fatalf("ошибка парсинга json: %v", err)
 	}
 	return result
 }
 
-// --- Auth handler tests ---
+// --- Тесты хендлеров авторизации ---
 
 func TestLoginJWT_Success(t *testing.T) {
 	app := fiber.New()
 	uc := &mockAuthUC{
-		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, error) { return true, nil },
+		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, string, error) {
+			return true, testCryptoKey, nil
+		},
 	}
 	v1.NewAuthRoutes(app, uc, jwtConf(), &noopLogger{})
 
@@ -203,18 +210,20 @@ func TestLoginJWT_Success(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 	result := parseJSON(t, resp.Body)
 	if result["token"] == nil || result["token"] == "" {
-		t.Fatal("expected token in response")
+		t.Fatal("ожидали token в ответе")
 	}
 }
 
 func TestLoginJWT_AuthFail(t *testing.T) {
 	app := fiber.New()
 	uc := &mockAuthUC{
-		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, error) { return false, nil },
+		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, string, error) {
+			return false, "", nil
+		},
 	}
 	v1.NewAuthRoutes(app, uc, jwtConf(), &noopLogger{})
 
@@ -224,15 +233,17 @@ func TestLoginJWT_AuthFail(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 401 {
-		t.Fatalf("expected 401, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 401, получили %d", resp.StatusCode)
 	}
 }
 
 func TestHandlerRegUser_Success(t *testing.T) {
 	app := fiber.New()
 	uc := &mockAuthUC{
-		regUserFn:  func(_ context.Context, _ entity.UserInput) error { return nil },
-		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, error) { return true, nil },
+		regUserFn: func(_ context.Context, _ entity.UserInput) error { return nil },
+		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, string, error) {
+			return true, testCryptoKey, nil
+		},
 	}
 	v1.NewAuthRoutes(app, uc, jwtConf(), &noopLogger{})
 
@@ -243,7 +254,7 @@ func TestHandlerRegUser_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
@@ -260,7 +271,7 @@ func TestHandlerRegUser_Conflict(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 409 {
-		t.Fatalf("expected 409, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 409, получили %d", resp.StatusCode)
 	}
 }
 
@@ -276,7 +287,7 @@ func TestDeleteUser_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
@@ -288,11 +299,11 @@ func TestDeleteUser_NoToken(t *testing.T) {
 	req := httptest.NewRequest("DELETE", "/api/user/delete-user", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 401 {
-		t.Fatalf("expected 401, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 401, получили %d", resp.StatusCode)
 	}
 }
 
-// --- Secret handler tests ---
+// --- Тесты хендлеров секретов ---
 
 func setupSecretApp(uc *mockSecretsUC) *fiber.App {
 	app := fiber.New()
@@ -311,13 +322,13 @@ func TestPostLoginPassword_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
 func TestPostLoginPassword_ValidationError(t *testing.T) {
 	uc := &mockSecretsUC{
-		createLoginPasswordFn: func(_ context.Context, _ string, _ request.LoginPassword) error {
+		createLoginPasswordFn: func(_ context.Context, _, _ string, _ request.LoginPassword) error {
 			return domain.ErrInvalidInput
 		},
 	}
@@ -330,13 +341,13 @@ func TestPostLoginPassword_ValidationError(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 400, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetLoginPassword_Success(t *testing.T) {
 	uc := &mockSecretsUC{
-		getLoginPasswordsFn: func(_ context.Context, _ string) ([]entity.LoginPassword, error) {
+		getLoginPasswordsFn: func(_ context.Context, _, _ string) ([]entity.LoginPassword, error) {
 			return []entity.LoginPassword{{Login: "a", Password: "b", Label: "c"}}, nil
 		},
 	}
@@ -347,13 +358,13 @@ func TestGetLoginPassword_Success(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetLoginPassword_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		getLoginPasswordsFn: func(_ context.Context, _ string) ([]entity.LoginPassword, error) {
+		getLoginPasswordsFn: func(_ context.Context, _, _ string) ([]entity.LoginPassword, error) {
 			return nil, domain.ErrNotFound
 		},
 	}
@@ -364,7 +375,7 @@ func TestGetLoginPassword_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
@@ -379,7 +390,7 @@ func TestDeleteLoginPassword_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
@@ -394,13 +405,13 @@ func TestPostTextSecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
 func TestGetTextSecret_Success(t *testing.T) {
 	uc := &mockSecretsUC{
-		getTextSecretsFn: func(_ context.Context, _ string) ([]entity.TextSecret, error) {
+		getTextSecretsFn: func(_ context.Context, _, _ string) ([]entity.TextSecret, error) {
 			return []entity.TextSecret{{Title: "note", Body: "hi"}}, nil
 		},
 	}
@@ -411,7 +422,7 @@ func TestGetTextSecret_Success(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 }
 
@@ -426,13 +437,13 @@ func TestPostBinarySecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
 func TestGetBinarySecret_Success(t *testing.T) {
 	uc := &mockSecretsUC{
-		getBinarySecretsFn: func(_ context.Context, _ string) ([]entity.BinarySecret, error) {
+		getBinarySecretsFn: func(_ context.Context, _, _ string) ([]entity.BinarySecret, error) {
 			return []entity.BinarySecret{{Filename: "f.bin"}}, nil
 		},
 	}
@@ -443,7 +454,7 @@ func TestGetBinarySecret_Success(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 }
 
@@ -458,13 +469,13 @@ func TestPostCardSecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
 func TestGetCardSecret_Success(t *testing.T) {
 	uc := &mockSecretsUC{
-		getCardSecretsFn: func(_ context.Context, _ string) ([]entity.CardSecret, error) {
+		getCardSecretsFn: func(_ context.Context, _, _ string) ([]entity.CardSecret, error) {
 			return []entity.CardSecret{{Cardholder: "John"}}, nil
 		},
 	}
@@ -475,13 +486,13 @@ func TestGetCardSecret_Success(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetAllSecrets_Success(t *testing.T) {
 	uc := &mockSecretsUC{
-		getAllSecretsFn: func(_ context.Context, _ string) (entity.AllSecrets, error) {
+		getAllSecretsFn: func(_ context.Context, _, _ string) (entity.AllSecrets, error) {
 			return entity.AllSecrets{
 				LoginPassword: []entity.LoginPassword{{Login: "a"}},
 			}, nil
@@ -494,13 +505,13 @@ func TestGetAllSecrets_Success(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 200, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetAllSecrets_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		getAllSecretsFn: func(_ context.Context, _ string) (entity.AllSecrets, error) {
+		getAllSecretsFn: func(_ context.Context, _, _ string) (entity.AllSecrets, error) {
 			return entity.AllSecrets{}, domain.ErrNotFound
 		},
 	}
@@ -511,7 +522,7 @@ func TestGetAllSecrets_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
@@ -521,7 +532,7 @@ func TestSecretEndpoint_NoToken(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/user/secret/get-all-secrets", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 401 {
-		t.Fatalf("expected 401, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 401, получили %d", resp.StatusCode)
 	}
 }
 
@@ -535,7 +546,7 @@ func TestDeleteTextSecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
@@ -549,7 +560,7 @@ func TestDeleteBinarySecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
@@ -563,16 +574,16 @@ func TestDeleteCardSecret_Success(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
-		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, string(b))
+		t.Fatalf("ожидали 200, получили %d: %s", resp.StatusCode, string(b))
 	}
 }
 
-// --- Additional error tests for 80%+ coverage ---
+// --- Дополнительные тесты на ошибки для покрытия 80%+ ---
 
 func TestPostLoginPassword_InternalError(t *testing.T) {
 	uc := &mockSecretsUC{
-		createLoginPasswordFn: func(_ context.Context, _ string, _ request.LoginPassword) error {
-			return errors.New("db failure")
+		createLoginPasswordFn: func(_ context.Context, _, _ string, _ request.LoginPassword) error {
+			return errors.New("ошибка БД")
 		},
 	}
 	app := setupSecretApp(uc)
@@ -583,13 +594,13 @@ func TestPostLoginPassword_InternalError(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
-		t.Fatalf("expected 500, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 500, получили %d", resp.StatusCode)
 	}
 }
 
 func TestPostLoginPassword_Conflict(t *testing.T) {
 	uc := &mockSecretsUC{
-		createLoginPasswordFn: func(_ context.Context, _ string, _ request.LoginPassword) error {
+		createLoginPasswordFn: func(_ context.Context, _, _ string, _ request.LoginPassword) error {
 			return domain.ErrAlreadyExists
 		},
 	}
@@ -601,13 +612,13 @@ func TestPostLoginPassword_Conflict(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 409 {
-		t.Fatalf("expected 409, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 409, получили %d", resp.StatusCode)
 	}
 }
 
 func TestPostTextSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		createTextSecretFn: func(_ context.Context, _ string, _ request.TextSecret) error {
+		createTextSecretFn: func(_ context.Context, _, _ string, _ request.TextSecret) error {
 			return domain.ErrInvalidInput
 		},
 	}
@@ -619,13 +630,13 @@ func TestPostTextSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 400, получили %d", resp.StatusCode)
 	}
 }
 
 func TestPostBinarySecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		createBinarySecretFn: func(_ context.Context, _ string, _ request.BinarySecret) error {
+		createBinarySecretFn: func(_ context.Context, _, _ string, _ request.BinarySecret) error {
 			return domain.ErrInvalidInput
 		},
 	}
@@ -637,13 +648,13 @@ func TestPostBinarySecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 400, получили %d", resp.StatusCode)
 	}
 }
 
 func TestPostCardSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		createCardSecretFn: func(_ context.Context, _ string, _ request.CardSecret) error {
+		createCardSecretFn: func(_ context.Context, _, _ string, _ request.CardSecret) error {
 			return domain.ErrInvalidInput
 		},
 	}
@@ -655,13 +666,13 @@ func TestPostCardSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 400, получили %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteLoginPassword_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		deleteLoginPasswordFn: func(_ context.Context, _ string, _ string) error {
+		deleteLoginPasswordFn: func(_ context.Context, _, _ string, _ string) error {
 			return domain.ErrNotFound
 		},
 	}
@@ -673,13 +684,13 @@ func TestDeleteLoginPassword_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteTextSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		deleteTextSecretFn: func(_ context.Context, _ string, _ string) error {
+		deleteTextSecretFn: func(_ context.Context, _, _ string, _ string) error {
 			return domain.ErrNotFound
 		},
 	}
@@ -691,13 +702,13 @@ func TestDeleteTextSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteBinarySecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		deleteBinarySecretFn: func(_ context.Context, _ string, _ string) error {
+		deleteBinarySecretFn: func(_ context.Context, _, _ string, _ string) error {
 			return domain.ErrNotFound
 		},
 	}
@@ -709,13 +720,13 @@ func TestDeleteBinarySecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteCardSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		deleteCardSecretFn: func(_ context.Context, _ string, _ string) error {
+		deleteCardSecretFn: func(_ context.Context, _, _ string, _ string) error {
 			return domain.ErrNotFound
 		},
 	}
@@ -727,13 +738,13 @@ func TestDeleteCardSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetTextSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		getTextSecretsFn: func(_ context.Context, _ string) ([]entity.TextSecret, error) {
+		getTextSecretsFn: func(_ context.Context, _, _ string) ([]entity.TextSecret, error) {
 			return nil, domain.ErrNotFound
 		},
 	}
@@ -743,13 +754,13 @@ func TestGetTextSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetBinarySecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		getBinarySecretsFn: func(_ context.Context, _ string) ([]entity.BinarySecret, error) {
+		getBinarySecretsFn: func(_ context.Context, _, _ string) ([]entity.BinarySecret, error) {
 			return nil, domain.ErrNotFound
 		},
 	}
@@ -759,13 +770,13 @@ func TestGetBinarySecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
 func TestGetCardSecret_Error(t *testing.T) {
 	uc := &mockSecretsUC{
-		getCardSecretsFn: func(_ context.Context, _ string) ([]entity.CardSecret, error) {
+		getCardSecretsFn: func(_ context.Context, _, _ string) ([]entity.CardSecret, error) {
 			return nil, domain.ErrNotFound
 		},
 	}
@@ -775,7 +786,7 @@ func TestGetCardSecret_Error(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 404, получили %d", resp.StatusCode)
 	}
 }
 
@@ -789,15 +800,17 @@ func TestHandlerRegUser_BodyParseError(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
-		t.Fatalf("expected 500, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 500, получили %d", resp.StatusCode)
 	}
 }
 
 func TestHandlerRegUser_AuthFailAfterReg(t *testing.T) {
 	app := fiber.New()
 	uc := &mockAuthUC{
-		regUserFn:  func(_ context.Context, _ entity.UserInput) error { return nil },
-		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, error) { return false, nil },
+		regUserFn: func(_ context.Context, _ entity.UserInput) error { return nil },
+		authUserFn: func(_ context.Context, _ entity.UserInput) (bool, string, error) {
+			return false, "", nil
+		},
 	}
 	v1.NewAuthRoutes(app, uc, jwtConf(), &noopLogger{})
 
@@ -807,14 +820,14 @@ func TestHandlerRegUser_AuthFailAfterReg(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
-		t.Fatalf("expected 500, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 500, получили %d", resp.StatusCode)
 	}
 }
 
 func TestDeleteUser_InternalError(t *testing.T) {
 	app := fiber.New()
 	uc := &mockAuthUC{
-		deleteUserFn: func(_ context.Context, _ entity.UserInput) error { return errors.New("fail") },
+		deleteUserFn: func(_ context.Context, _ entity.UserInput) error { return errors.New("ошибка") },
 	}
 	v1.NewAuthRoutes(app, uc, jwtConf(), &noopLogger{})
 
@@ -824,7 +837,7 @@ func TestDeleteUser_InternalError(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
-		t.Fatalf("expected 500, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 500, получили %d", resp.StatusCode)
 	}
 }
 
@@ -836,6 +849,6 @@ func TestPostLoginPassword_InvalidBody(t *testing.T) {
 
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
-		t.Fatalf("expected 400, got %d", resp.StatusCode)
+		t.Fatalf("ожидали 400, получили %d", resp.StatusCode)
 	}
 }

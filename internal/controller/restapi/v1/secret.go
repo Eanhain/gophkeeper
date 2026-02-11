@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/Eanhain/gophkeeper/domain"
-	res "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/request"
-	resp "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/response"
+	request "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/request"
+	response "github.com/Eanhain/gophkeeper/internal/controller/restapi/v1/response"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -13,35 +13,39 @@ import (
 // BodySecret is a type constraint that lists all request structs
 // accepted by the generic ParseBody function.
 type BodySecret interface {
-	res.LoginPassword | res.TextSecret |
-		res.BinarySecret | res.CardSecret | res.Secret |
-		res.DeleteLoginPassword | res.DeleteTextSecret |
-		res.DeleteBinarySecret | res.DeleteCardSecret
+	request.LoginPassword | request.TextSecret |
+		request.BinarySecret | request.CardSecret | request.Secret |
+		request.DeleteLoginPassword | request.DeleteTextSecret |
+		request.DeleteBinarySecret | request.DeleteCardSecret
 }
 
 // ParseBody is a generic helper that:
-//  1. Extracts the username from the JWT token stored in fiber.Ctx.Locals.
+//  1. Extracts the username and crypto_key from the JWT token stored in fiber.Ctx.Locals.
 //  2. Parses the JSON request body into the concrete type T.
 //
-// Returns the username and the parsed struct, or an appropriate fiber.Error.
-func ParseBody[T BodySecret](c *fiber.Ctx) (string, T, error) {
+// Returns the username, cryptoKey, and the parsed struct, or an appropriate fiber.Error.
+func ParseBody[T BodySecret](c *fiber.Ctx) (string, string, T, error) {
 	var rValue T
 	userToken, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return "", rValue, fiber.ErrUnauthorized
+		return "", "", rValue, fiber.ErrUnauthorized
 	}
 	claims, ok := userToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", rValue, fiber.ErrUnauthorized
+		return "", "", rValue, fiber.ErrUnauthorized
 	}
 	username, ok := claims["login"].(string)
 	if !ok {
-		return "", rValue, fiber.ErrUnauthorized
+		return "", "", rValue, fiber.ErrUnauthorized
+	}
+	cryptoKey, ok := claims["crypto_key"].(string)
+	if !ok {
+		return "", "", rValue, fiber.ErrUnauthorized
 	}
 	if err := c.BodyParser(&rValue); err != nil {
-		return "", rValue, fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+		return "", "", rValue, fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
-	return username, rValue, nil
+	return username, cryptoKey, rValue, nil
 }
 
 // usecaseErr maps a domain/usecase error to the corresponding
@@ -64,23 +68,26 @@ func usecaseErr(err error) error {
 	}
 }
 
-// extractUsername extracts the "login" claim from the JWT token
-// stored in c.Locals("user"). Used by GET handlers that have
-// no request body to parse.
-func extractUsername(c *fiber.Ctx) (string, error) {
+// extractUserInfo extracts the "login" and "crypto_key" claims from the JWT token
+// stored in c.Locals("user"). Used by GET and DELETE handlers.
+func extractUserInfo(c *fiber.Ctx) (username, cryptoKey string, err error) {
 	userToken, ok := c.Locals("user").(*jwt.Token)
 	if !ok {
-		return "", fiber.ErrUnauthorized
+		return "", "", fiber.ErrUnauthorized
 	}
 	claims, ok := userToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", fiber.ErrUnauthorized
+		return "", "", fiber.ErrUnauthorized
 	}
-	username, ok := claims["login"].(string)
+	username, ok = claims["login"].(string)
 	if !ok {
-		return "", fiber.ErrUnauthorized
+		return "", "", fiber.ErrUnauthorized
 	}
-	return username, nil
+	cryptoKey, ok = claims["crypto_key"].(string)
+	if !ok {
+		return "", "", fiber.ErrUnauthorized
+	}
+	return username, cryptoKey, nil
 }
 
 // --- Delete ---
@@ -101,11 +108,11 @@ func extractUsername(c *fiber.Ctx) (string, error) {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/delete-login-password [delete]
 func (r *V1) DeleteLoginPassword(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.DeleteLoginPassword](c)
+	login, cryptoKey, body, err := ParseBody[request.DeleteLoginPassword](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.DeleteLoginPassword(c.Context(), login, body.Login); err != nil {
+	if err := r.secrets.DeleteLoginPassword(c.Context(), login, cryptoKey, body.Login); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "login password deleted"})
@@ -127,11 +134,11 @@ func (r *V1) DeleteLoginPassword(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/delete-text-secret [delete]
 func (r *V1) DeleteTextSecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.DeleteTextSecret](c)
+	login, cryptoKey, body, err := ParseBody[request.DeleteTextSecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.DeleteTextSecret(c.Context(), login, body.Title); err != nil {
+	if err := r.secrets.DeleteTextSecret(c.Context(), login, cryptoKey, body.Title); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "text secret deleted"})
@@ -153,11 +160,11 @@ func (r *V1) DeleteTextSecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/delete-binary-secret [delete]
 func (r *V1) DeleteBinarySecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.DeleteBinarySecret](c)
+	login, cryptoKey, body, err := ParseBody[request.DeleteBinarySecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.DeleteBinarySecret(c.Context(), login, body.Filename); err != nil {
+	if err := r.secrets.DeleteBinarySecret(c.Context(), login, cryptoKey, body.Filename); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "binary secret deleted"})
@@ -179,11 +186,11 @@ func (r *V1) DeleteBinarySecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/delete-card-secret [delete]
 func (r *V1) DeleteCardSecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.DeleteCardSecret](c)
+	login, cryptoKey, body, err := ParseBody[request.DeleteCardSecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.DeleteCardSecret(c.Context(), login, body.Cardholder); err != nil {
+	if err := r.secrets.DeleteCardSecret(c.Context(), login, cryptoKey, body.Cardholder); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "card secret deleted"})
@@ -203,15 +210,15 @@ func (r *V1) DeleteCardSecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/get-login-password [get]
 func (r *V1) GetLoginPassword(c *fiber.Ctx) error {
-	username, err := extractUsername(c)
+	username, cryptoKey, err := extractUserInfo(c)
 	if err != nil {
 		return err
 	}
-	result, err := r.secrets.GetLoginPasswords(c.Context(), username)
+	result, err := r.secrets.GetLoginPasswords(c.Context(), username, cryptoKey)
 	if err != nil {
 		return usecaseErr(err)
 	}
-	return c.JSON(resp.FromLoginPasswords(result))
+	return c.JSON(response.FromLoginPasswords(result))
 }
 
 // GetTextSecret returns all text secrets for the authenticated user.
@@ -226,15 +233,15 @@ func (r *V1) GetLoginPassword(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/get-text-secret [get]
 func (r *V1) GetTextSecret(c *fiber.Ctx) error {
-	username, err := extractUsername(c)
+	username, cryptoKey, err := extractUserInfo(c)
 	if err != nil {
 		return err
 	}
-	result, err := r.secrets.GetTextSecrets(c.Context(), username)
+	result, err := r.secrets.GetTextSecrets(c.Context(), username, cryptoKey)
 	if err != nil {
 		return usecaseErr(err)
 	}
-	return c.JSON(resp.FromTextSecrets(result))
+	return c.JSON(response.FromTextSecrets(result))
 }
 
 // GetBinarySecret returns all binary secrets for the authenticated user.
@@ -249,15 +256,15 @@ func (r *V1) GetTextSecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/get-binary-secret [get]
 func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
-	username, err := extractUsername(c)
+	username, cryptoKey, err := extractUserInfo(c)
 	if err != nil {
 		return err
 	}
-	result, err := r.secrets.GetBinarySecrets(c.Context(), username)
+	result, err := r.secrets.GetBinarySecrets(c.Context(), username, cryptoKey)
 	if err != nil {
 		return usecaseErr(err)
 	}
-	return c.JSON(resp.FromBinarySecrets(result))
+	return c.JSON(response.FromBinarySecrets(result))
 }
 
 // GetCardSecret returns all card secrets for the authenticated user.
@@ -272,15 +279,15 @@ func (r *V1) GetBinarySecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/get-card-secret [get]
 func (r *V1) GetCardSecret(c *fiber.Ctx) error {
-	username, err := extractUsername(c)
+	username, cryptoKey, err := extractUserInfo(c)
 	if err != nil {
 		return err
 	}
-	result, err := r.secrets.GetCardSecrets(c.Context(), username)
+	result, err := r.secrets.GetCardSecrets(c.Context(), username, cryptoKey)
 	if err != nil {
 		return usecaseErr(err)
 	}
-	return c.JSON(resp.FromCardSecrets(result))
+	return c.JSON(response.FromCardSecrets(result))
 }
 
 // GetAllSecrets returns all secrets of all types for the authenticated user.
@@ -295,15 +302,15 @@ func (r *V1) GetCardSecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/get-all-secrets [get]
 func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
-	username, err := extractUsername(c)
+	username, cryptoKey, err := extractUserInfo(c)
 	if err != nil {
 		return err
 	}
-	all, err := r.secrets.GetAllSecrets(c.Context(), username)
+	all, err := r.secrets.GetAllSecrets(c.Context(), username, cryptoKey)
 	if err != nil {
 		return usecaseErr(err)
 	}
-	return c.JSON(resp.FromAllSecrets(all))
+	return c.JSON(response.FromAllSecrets(all))
 }
 
 // --- Post ---
@@ -324,11 +331,11 @@ func (r *V1) GetAllSecrets(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/post-login-password [post]
 func (r *V1) PostLoginPassword(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.LoginPassword](c)
+	login, cryptoKey, body, err := ParseBody[request.LoginPassword](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.CreateLoginPassword(c.Context(), login, body); err != nil {
+	if err := r.secrets.CreateLoginPassword(c.Context(), login, cryptoKey, body); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "login password created"})
@@ -350,11 +357,11 @@ func (r *V1) PostLoginPassword(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/post-text-secret [post]
 func (r *V1) PostTextSecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.TextSecret](c)
+	login, cryptoKey, body, err := ParseBody[request.TextSecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.CreateTextSecret(c.Context(), login, body); err != nil {
+	if err := r.secrets.CreateTextSecret(c.Context(), login, cryptoKey, body); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "text secret created"})
@@ -376,11 +383,11 @@ func (r *V1) PostTextSecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/post-binary-secret [post]
 func (r *V1) PostBinarySecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.BinarySecret](c)
+	login, cryptoKey, body, err := ParseBody[request.BinarySecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.CreateBinarySecret(c.Context(), login, body); err != nil {
+	if err := r.secrets.CreateBinarySecret(c.Context(), login, cryptoKey, body); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "binary secret created"})
@@ -402,11 +409,11 @@ func (r *V1) PostBinarySecret(c *fiber.Ctx) error {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/secret/post-card-secret [post]
 func (r *V1) PostCardSecret(c *fiber.Ctx) error {
-	login, body, err := ParseBody[res.CardSecret](c)
+	login, cryptoKey, body, err := ParseBody[request.CardSecret](c)
 	if err != nil {
 		return err
 	}
-	if err := r.secrets.CreateCardSecret(c.Context(), login, body); err != nil {
+	if err := r.secrets.CreateCardSecret(c.Context(), login, cryptoKey, body); err != nil {
 		return usecaseErr(err)
 	}
 	return c.JSON(fiber.Map{"message": "card secret created"})

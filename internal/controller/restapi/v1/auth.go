@@ -13,11 +13,12 @@ import (
 )
 
 // CreateJWT generates a signed HS256 JWT for the given username.
-// The token contains the "login" claim and expires after 72 hours.
-func (r *V1) CreateJWT(username string) (string, error) {
+// The token contains the "login" and "crypto_key" claims and expires after 72 hours.
+func (r *V1) CreateJWT(username, cryptoKey string) (string, error) {
 	claims := jwt.MapClaims{
-		"login": username,
-		"exp":   time.Now().Add(time.Hour * 72).Unix(),
+		"login":      username,
+		"crypto_key": cryptoKey,
+		"exp":        time.Now().Add(time.Hour * 72).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -41,12 +42,12 @@ func (r *V1) CreateJWT(username string) (string, error) {
 // @Failure      500 {object} map[string]string "internal server error"
 // @Router       /api/user/login [post]
 func (r *V1) LoginJWT(c *fiber.Ctx) error {
-	username, err := r.AuthUser(c)
+	username, cryptoKey, err := r.AuthUser(c)
 	if err != nil {
 		r.l.Warn("Can't auth user: %v", err)
 		return fiber.ErrUnauthorized
 	}
-	tokenJWT, err := r.CreateJWT(username)
+	tokenJWT, err := r.CreateJWT(username, cryptoKey)
 	if err != nil {
 		r.l.Warn("Can't create jwt token %v", err)
 		return fiber.ErrInternalServerError
@@ -59,9 +60,9 @@ func (r *V1) LoginJWT(c *fiber.Ctx) error {
 //
 // The flow is:
 //  1. Parse the request body into UserInput.
-//  2. Call RegUser (hashes the password and inserts into DB).
-//  3. Immediately authenticate (AuthUser) to verify the record.
-//  4. Generate a JWT and return it.
+//  2. Call RegUser (hashes the password, generates crypto salt, and inserts into DB).
+//  3. Immediately authenticate (AuthUser) to verify the record and derive crypto key.
+//  4. Generate a JWT (with crypto_key claim) and return it.
 //
 // @Summary      Register user
 // @Description  Creates a new user account, authenticates it and returns a JWT token
@@ -86,12 +87,13 @@ func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 			return fiber.ErrInternalServerError
 		}
 	}
-	if ok, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password}); err != nil || !ok {
+	ok, cryptoKey, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password})
+	if err != nil || !ok {
 		r.l.Warn("Can't auth user: %v", err)
 		return fiber.ErrInternalServerError
 	}
 
-	tokenJWT, err := r.CreateJWT(user.Login)
+	tokenJWT, err := r.CreateJWT(user.Login, cryptoKey)
 	if err != nil {
 		r.l.Warn("Can't create jwt token %v", err)
 		return fiber.ErrInternalServerError
@@ -99,21 +101,23 @@ func (r *V1) HandlerRegUser(c *fiber.Ctx) error {
 
 	c.Set("Authorization", "Bearer "+tokenJWT)
 
-	return c.JSON(fiber.Map{"message": "User registered successfully"})
+	return c.JSON(fiber.Map{"message": "User registered successfully", "token": tokenJWT})
 }
 
 // AuthUser is a helper that parses the request body and verifies
-// the credentials via the auth usecase. Returns the username on success.
-func (r *V1) AuthUser(c *fiber.Ctx) (string, error) {
+// the credentials via the auth usecase. Returns the username and
+// derived crypto key on success.
+func (r *V1) AuthUser(c *fiber.Ctx) (string, string, error) {
 	var user request.UserInput
 	if err := c.BodyParser(&user); err != nil {
 		r.l.Warn("can't parse body for registr %v", err)
-		return "", err
+		return "", "", err
 	}
-	if ok, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password}); err != nil || !ok {
-		return "", fmt.Errorf("user not auth %v", user.Login)
+	ok, cryptoKey, err := r.t.AuthUser(c.Context(), entity.UserInput{Login: user.Login, Password: user.Password})
+	if err != nil || !ok {
+		return "", "", fmt.Errorf("user not auth %v", user.Login)
 	}
-	return user.Login, c.JSON(fiber.Map{"message": "User authenticated successfully"})
+	return user.Login, cryptoKey, nil
 }
 
 // DeleteUser deletes the authenticated user's account.

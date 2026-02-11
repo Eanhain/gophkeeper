@@ -1,8 +1,9 @@
 // Package secrets implements the repo.SecretsRepo interface backed by PostgreSQL.
 //
-// Sensitive fields (passwords, PAN, binary data, text bodies) are stored
-// encrypted at the database level using pgcrypto's pgp_sym_encrypt / pgp_sym_decrypt.
-// The encryption key is passed to the repository at construction time via CRYPTO_KEY.
+// Sensitive fields (passwords, PAN, binary data, text bodies) are encrypted
+// at the application level using AES-256-GCM with a per-user key derived
+// from the user's password via Argon2id. Each user's data is encrypted with
+// their own unique key, so compromising one key does not affect other users.
 //
 // SQL is built with squirrel; queries are executed via pgx connection pool.
 package secrets
@@ -14,6 +15,7 @@ import (
 
 	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/Eanhain/gophkeeper/internal/entity"
+	"github.com/Eanhain/gophkeeper/pkg/crypto"
 	"github.com/Eanhain/gophkeeper/pkg/postgres"
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgerrcode"
@@ -23,17 +25,12 @@ import (
 // Repo is the PostgreSQL-backed secrets repository.
 type Repo struct {
 	*postgres.Postgres
-	log       domain.LoggerI
-	cryptoKey string // key for pgp_sym_encrypt/pgp_sym_decrypt
+	log domain.LoggerI
 }
 
-// New creates a Repo. Panics (via log.Fatal) if cryptoKey is empty,
-// because secrets cannot be stored without encryption.
-func New(pg *postgres.Postgres, log domain.LoggerI, cryptoKey string) *Repo {
-	if cryptoKey == "" {
-		log.Fatal("secrets repo: CRYPTO_KEY is empty")
-	}
-	return &Repo{pg, log, cryptoKey}
+// New creates a Repo.
+func New(pg *postgres.Postgres, log domain.LoggerI) *Repo {
+	return &Repo{pg, log}
 }
 
 // wrapExecErr inspects a PostgreSQL error and maps data-exception codes
@@ -49,12 +46,17 @@ func (r *Repo) wrapExecErr(err error) error {
 // --- LoginPassword ---
 
 // CreateLoginPassword inserts a credential record. The password field
-// is encrypted at the DB level with pgp_sym_encrypt.
-func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword) error {
+// is encrypted at the application level with AES-256-GCM using the per-user key.
+func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword, cryptoKey string) error {
+	encPassword, err := crypto.EncryptString(cryptoKey, lp.Password)
+	if err != nil {
+		return fmt.Errorf("encrypt password: %w", err)
+	}
+
 	sql, args, err := r.Builder.
 		Insert("user_credentials").
 		Columns("user_id", "login", "password_enc", "label").
-		Values(lp.UserID, lp.Login, squirrel.Expr("pgp_sym_encrypt(?, ?)", lp.Password, r.cryptoKey), lp.Label).
+		Values(lp.UserID, lp.Login, encPassword, lp.Label).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build sql: %w", err)
@@ -67,12 +69,10 @@ func (r *Repo) CreateLoginPassword(ctx context.Context, lp entity.LoginPassword)
 }
 
 // GetLoginPasswords returns all credentials for the given user,
-// decrypting passwords on the fly with pgp_sym_decrypt.
-func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.LoginPassword, error) {
+// decrypting passwords on the fly with the per-user key.
+func (r *Repo) GetLoginPasswords(ctx context.Context, userID int, cryptoKey string) ([]entity.LoginPassword, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "login").
-		Column("pgp_sym_decrypt(password_enc, ?) AS password_enc", r.cryptoKey).
-		Column("label").
+		Select("user_id", "login", "password_enc", "label").
 		From("user_credentials").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -88,8 +88,13 @@ func (r *Repo) GetLoginPasswords(ctx context.Context, userID int) ([]entity.Logi
 	var result []entity.LoginPassword
 	for rows.Next() {
 		var lp entity.LoginPassword
-		if err := rows.Scan(&lp.UserID, &lp.Login, &lp.Password, &lp.Label); err != nil {
+		var encPassword []byte
+		if err := rows.Scan(&lp.UserID, &lp.Login, &encPassword, &lp.Label); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		lp.Password, err = crypto.DecryptString(cryptoKey, encPassword)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt password: %w", err)
 		}
 		result = append(result, lp)
 	}
@@ -119,12 +124,17 @@ func (r *Repo) DeleteLoginPassword(ctx context.Context, userID int, login string
 // --- TextSecret ---
 
 // CreateTextSecret inserts a text note. The body is encrypted
-// at the DB level with pgp_sym_encrypt.
-func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error {
+// at the application level with AES-256-GCM using the per-user key.
+func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret, cryptoKey string) error {
+	encBody, err := crypto.EncryptString(cryptoKey, ts.Body)
+	if err != nil {
+		return fmt.Errorf("encrypt body: %w", err)
+	}
+
 	sql, args, err := r.Builder.
 		Insert("user_text_items").
 		Columns("user_id", "title", "body").
-		Values(ts.UserID, ts.Title, squirrel.Expr("pgp_sym_encrypt(?, ?)", ts.Body, r.cryptoKey)).
+		Values(ts.UserID, ts.Title, encBody).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build sql: %w", err)
@@ -137,11 +147,10 @@ func (r *Repo) CreateTextSecret(ctx context.Context, ts entity.TextSecret) error
 }
 
 // GetTextSecrets returns all text notes for the given user,
-// decrypting bodies on the fly.
-func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSecret, error) {
+// decrypting bodies on the fly with the per-user key.
+func (r *Repo) GetTextSecrets(ctx context.Context, userID int, cryptoKey string) ([]entity.TextSecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "title").
-		Column("pgp_sym_decrypt(body, ?) AS body", r.cryptoKey).
+		Select("user_id", "title", "body").
 		From("user_text_items").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -157,8 +166,13 @@ func (r *Repo) GetTextSecrets(ctx context.Context, userID int) ([]entity.TextSec
 	var result []entity.TextSecret
 	for rows.Next() {
 		var ts entity.TextSecret
-		if err := rows.Scan(&ts.UserID, &ts.Title, &ts.Body); err != nil {
+		var encBody []byte
+		if err := rows.Scan(&ts.UserID, &ts.Title, &encBody); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		ts.Body, err = crypto.DecryptString(cryptoKey, encBody)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt body: %w", err)
 		}
 		result = append(result, ts)
 	}
@@ -188,12 +202,17 @@ func (r *Repo) DeleteTextSecret(ctx context.Context, userID int, title string) e
 // --- BinarySecret ---
 
 // CreateBinarySecret inserts a binary blob. The Data field (base64-encoded)
-// is encrypted at the DB level with pgp_sym_encrypt.
-func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) error {
+// is encrypted at the application level with AES-256-GCM using the per-user key.
+func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret, cryptoKey string) error {
+	encData, err := crypto.EncryptString(cryptoKey, bs.Data)
+	if err != nil {
+		return fmt.Errorf("encrypt data: %w", err)
+	}
+
 	sql, args, err := r.Builder.
 		Insert("user_binary_items").
 		Columns("user_id", "filename", "mime_type", "data").
-		Values(bs.UserID, bs.Filename, bs.MimeType, squirrel.Expr("pgp_sym_encrypt(?, ?)", bs.Data, r.cryptoKey)).
+		Values(bs.UserID, bs.Filename, bs.MimeType, encData).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build sql: %w", err)
@@ -206,11 +225,10 @@ func (r *Repo) CreateBinarySecret(ctx context.Context, bs entity.BinarySecret) e
 }
 
 // GetBinarySecrets returns all binary blobs for the given user,
-// decrypting the data column on the fly.
-func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.BinarySecret, error) {
+// decrypting the data column on the fly with the per-user key.
+func (r *Repo) GetBinarySecrets(ctx context.Context, userID int, cryptoKey string) ([]entity.BinarySecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "filename", "mime_type").
-		Column("pgp_sym_decrypt(data, ?) AS data", r.cryptoKey).
+		Select("user_id", "filename", "mime_type", "data").
 		From("user_binary_items").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -226,8 +244,13 @@ func (r *Repo) GetBinarySecrets(ctx context.Context, userID int) ([]entity.Binar
 	var result []entity.BinarySecret
 	for rows.Next() {
 		var bs entity.BinarySecret
-		if err := rows.Scan(&bs.UserID, &bs.Filename, &bs.MimeType, &bs.Data); err != nil {
+		var encData []byte
+		if err := rows.Scan(&bs.UserID, &bs.Filename, &bs.MimeType, &encData); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		bs.Data, err = crypto.DecryptString(cryptoKey, encData)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt data: %w", err)
 		}
 		result = append(result, bs)
 	}
@@ -257,12 +280,17 @@ func (r *Repo) DeleteBinarySecret(ctx context.Context, userID int, filename stri
 // --- CardSecret ---
 
 // CreateCardSecret inserts a bank card. The PAN field is encrypted
-// at the DB level with pgp_sym_encrypt.
-func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error {
+// at the application level with AES-256-GCM using the per-user key.
+func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret, cryptoKey string) error {
+	encPan, err := crypto.EncryptString(cryptoKey, cs.Pan)
+	if err != nil {
+		return fmt.Errorf("encrypt pan: %w", err)
+	}
+
 	sql, args, err := r.Builder.
 		Insert("user_cards").
 		Columns("user_id", "cardholder", "pan_enc", "exp_month", "exp_year", "brand", "last4").
-		Values(cs.UserID, cs.Cardholder, squirrel.Expr("pgp_sym_encrypt(?, ?)", cs.Pan, r.cryptoKey), cs.ExpMonth, cs.ExpYear, cs.Brand, cs.Last4).
+		Values(cs.UserID, cs.Cardholder, encPan, cs.ExpMonth, cs.ExpYear, cs.Brand, cs.Last4).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build sql: %w", err)
@@ -275,15 +303,10 @@ func (r *Repo) CreateCardSecret(ctx context.Context, cs entity.CardSecret) error
 }
 
 // GetCardSecrets returns all cards for the given user,
-// decrypting the PAN column on the fly.
-func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSecret, error) {
+// decrypting the PAN column on the fly with the per-user key.
+func (r *Repo) GetCardSecrets(ctx context.Context, userID int, cryptoKey string) ([]entity.CardSecret, error) {
 	sql, args, err := r.Builder.
-		Select("user_id", "cardholder").
-		Column("pgp_sym_decrypt(pan_enc, ?) AS pan_enc", r.cryptoKey).
-		Column("exp_month").
-		Column("exp_year").
-		Column("brand").
-		Column("last4").
+		Select("user_id", "cardholder", "pan_enc", "exp_month", "exp_year", "brand", "last4").
 		From("user_cards").
 		Where(squirrel.Eq{"user_id": userID}).
 		ToSql()
@@ -299,8 +322,13 @@ func (r *Repo) GetCardSecrets(ctx context.Context, userID int) ([]entity.CardSec
 	var result []entity.CardSecret
 	for rows.Next() {
 		var cs entity.CardSecret
-		if err := rows.Scan(&cs.UserID, &cs.Cardholder, &cs.Pan, &cs.ExpMonth, &cs.ExpYear, &cs.Brand, &cs.Last4); err != nil {
+		var encPan []byte
+		if err := rows.Scan(&cs.UserID, &cs.Cardholder, &encPan, &cs.ExpMonth, &cs.ExpYear, &cs.Brand, &cs.Last4); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		cs.Pan, err = crypto.DecryptString(cryptoKey, encPan)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt pan: %w", err)
 		}
 		result = append(result, cs)
 	}
@@ -349,20 +377,20 @@ func (r *Repo) GetUserID(ctx context.Context, username string) (int, error) {
 
 // GetAllSecrets fetches all four secret types for a user in separate queries
 // and returns them combined in a single entity.AllSecrets struct.
-func (r *Repo) GetAllSecrets(ctx context.Context, userID int) (entity.AllSecrets, error) {
-	lp, err := r.GetLoginPasswords(ctx, userID)
+func (r *Repo) GetAllSecrets(ctx context.Context, userID int, cryptoKey string) (entity.AllSecrets, error) {
+	lp, err := r.GetLoginPasswords(ctx, userID, cryptoKey)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	ts, err := r.GetTextSecrets(ctx, userID)
+	ts, err := r.GetTextSecrets(ctx, userID, cryptoKey)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	bs, err := r.GetBinarySecrets(ctx, userID)
+	bs, err := r.GetBinarySecrets(ctx, userID, cryptoKey)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
-	cs, err := r.GetCardSecrets(ctx, userID)
+	cs, err := r.GetCardSecrets(ctx, userID, cryptoKey)
 	if err != nil {
 		return entity.AllSecrets{}, err
 	}
