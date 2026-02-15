@@ -1,6 +1,6 @@
 basePath: /v1
 definitions:
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.BinarySecret:
+  request.BinarySecret:
     properties:
       data:
         example: LS0tLS1CRUdJTi...
@@ -12,7 +12,7 @@ definitions:
         example: application/x-pem-file
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.CardSecret:
+  request.CardSecret:
     properties:
       brand:
         example: Visa
@@ -33,31 +33,31 @@ definitions:
         example: "4111111111111111"
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteBinarySecret:
+  request.DeleteBinarySecret:
     properties:
       filename:
         example: certificate.pem
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteCardSecret:
+  request.DeleteCardSecret:
     properties:
       cardholder:
         example: John Doe
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteLoginPassword:
+  request.DeleteLoginPassword:
     properties:
       login:
         example: admin@example.com
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteTextSecret:
+  request.DeleteTextSecret:
     properties:
       title:
         example: API key
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.LoginPassword:
+  request.LoginPassword:
     properties:
       label:
         example: work email
@@ -69,7 +69,7 @@ definitions:
         example: myP@ssw0rd
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.TextSecret:
+  request.TextSecret:
     properties:
       body:
         example: sk-proj-abc123...
@@ -78,7 +78,7 @@ definitions:
         example: API key
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput:
+  request.UserInput:
     properties:
       login:
         example: john_doe
@@ -87,26 +87,26 @@ definitions:
         example: s3cureP@ss
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.AllSecrets:
+  response.AllSecrets:
     properties:
       binary_secret:
         items:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret'
+          $ref: '#/definitions/response.BinarySecret'
         type: array
       card_secret:
         items:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret'
+          $ref: '#/definitions/response.CardSecret'
         type: array
       login_password:
         items:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword'
+          $ref: '#/definitions/response.LoginPassword'
         type: array
       text_secret:
         items:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret'
+          $ref: '#/definitions/response.TextSecret'
         type: array
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret:
+  response.BinarySecret:
     properties:
       data:
         example: LS0tLS1CRUdJTi...
@@ -118,7 +118,7 @@ definitions:
         example: application/x-pem-file
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret:
+  response.CardSecret:
     properties:
       brand:
         example: Visa
@@ -139,7 +139,7 @@ definitions:
         example: "4111111111111111"
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword:
+  response.LoginPassword:
     properties:
       label:
         example: work email
@@ -151,7 +151,7 @@ definitions:
         example: myP@ssw0rd
         type: string
     type: object
-  github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret:
+  response.TextSecret:
     properties:
       body:
         example: sk-proj-abc123...
@@ -167,9 +167,10 @@ info:
     GophKeeper — secure vault for passwords, text notes, binary data and bank cards.
 
     ## Security
+    All connections are encrypted with mandatory TLS.
+    JWT tokens and all data are always protected in transit.
     Data at rest is encrypted per-user with AES-256-GCM.
     Encryption keys are derived from user passwords using Argon2id.
-    Transport security should be provided by TLS.
   title: Gophkeeper API
   version: "1.0"
 paths:
@@ -216,7 +217,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput'
+          $ref: '#/definitions/request.UserInput'
       produces:
       - application/json
       responses:
@@ -253,7 +254,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.UserInput'
+          $ref: '#/definitions/request.UserInput'
       produces:
       - application/json
       responses:
@@ -289,7 +290,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteBinarySecret'
+          $ref: '#/definitions/request.DeleteBinarySecret'
       produces:
       - application/json
       responses:
@@ -339,7 +340,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteCardSecret'
+          $ref: '#/definitions/request.DeleteCardSecret'
       produces:
       - application/json
       responses:
@@ -390,7 +391,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteLoginPassword'
+          $ref: '#/definitions/request.DeleteLoginPassword'
       produces:
       - application/json
       responses:
@@ -440,7 +441,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.DeleteTextSecret'
+          $ref: '#/definitions/request.DeleteTextSecret'
       produces:
       - application/json
       responses:
@@ -489,7 +490,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.AllSecrets'
+            $ref: '#/definitions/response.AllSecrets'
         "401":
           description: unauthorized
           schema:
@@ -517,7 +518,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.BinarySecret'
+              $ref: '#/definitions/response.BinarySecret'
             type: array
         "401":
           description: unauthorized
@@ -546,7 +547,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.CardSecret'
+              $ref: '#/definitions/response.CardSecret'
             type: array
         "401":
           description: unauthorized
@@ -575,7 +576,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.LoginPassword'
+              $ref: '#/definitions/response.LoginPassword'
             type: array
         "401":
           description: unauthorized
@@ -604,7 +605,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_response.TextSecret'
+              $ref: '#/definitions/response.TextSecret'
             type: array
         "401":
           description: unauthorized
@@ -635,7 +636,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.BinarySecret'
+          $ref: '#/definitions/request.BinarySecret'
       produces:
       - application/json
       responses:
@@ -685,7 +686,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.CardSecret'
+          $ref: '#/definitions/request.CardSecret'
       produces:
       - application/json
       responses:
@@ -735,7 +736,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.LoginPassword'
+          $ref: '#/definitions/request.LoginPassword'
       produces:
       - application/json
       responses:
@@ -785,7 +786,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_Eanhain_gophkeeper_internal_controller_restapi_v1_request.TextSecret'
+          $ref: '#/definitions/request.TextSecret'
       produces:
       - application/json
       responses:
@@ -830,4 +831,6 @@ securityDefinitions:
     in: header
     name: Authorization
     type: apiKey
+schemes:
+- https
 swagger: "2.0"

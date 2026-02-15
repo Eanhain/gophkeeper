@@ -42,3 +42,17 @@ func ShutdownTimeout(timeout time.Duration) Option {
 		s.shutdownTimeout = timeout
 	}
 }
+
+// TLSCert sets the path to the TLS certificate file.
+func TLSCert(certFile string) Option {
+	return func(s *Server) {
+		s.tlsCertFile = certFile
+	}
+}
+
+// TLSKey sets the path to the TLS private key file.
+func TLSKey(keyFile string) Option {
+	return func(s *Server) {
+		s.tlsKeyFile = keyFile
+	}
+}

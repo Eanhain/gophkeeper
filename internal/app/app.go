@@ -39,8 +39,13 @@ func Run(cfg *config.Config) { //nolint: gocyclo,cyclop,funlen,gocritic,nolintli
 		repoSecrets.New(pg, l),
 		l,
 	)
-	// HTTP Server
-	httpServer := httpserver.New(l, httpserver.Port(cfg.HTTP.Port), httpserver.Prefork(cfg.HTTP.UsePreforkMode))
+	// HTTPS Server (mandatory TLS)
+	httpServer := httpserver.New(l,
+		httpserver.Port(cfg.HTTP.Port),
+		httpserver.Prefork(cfg.HTTP.UsePreforkMode),
+		httpserver.TLSCert(cfg.TLS.CertFile),
+		httpserver.TLSKey(cfg.TLS.KeyFile),
+	)
 
 	restapi.NewRouter(httpServer.App, cfg, authUseCase, secretsUseCase, l)
 

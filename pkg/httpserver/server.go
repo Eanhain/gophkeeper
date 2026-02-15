@@ -1,4 +1,4 @@
-// Package httpserver implements HTTP server.
+// Package httpserver implements HTTPS server with mandatory TLS.
 package httpserver
 
 import (
@@ -20,7 +20,7 @@ type LoggerI interface {
 }
 
 const (
-	_defaultAddr            = ":80"
+	_defaultAddr            = ":443"
 	_defaultReadTimeout     = 5 * time.Second
 	_defaultWriteTimeout    = 5 * time.Second
 	_defaultShutdownTimeout = 3 * time.Second
@@ -39,6 +39,10 @@ type Server struct {
 	readTimeout     time.Duration
 	writeTimeout    time.Duration
 	shutdownTimeout time.Duration
+
+	// TLS certificate and private key file paths (mandatory).
+	tlsCertFile string
+	tlsKeyFile  string
 
 	logger LoggerI
 }
@@ -78,10 +82,13 @@ func New(l LoggerI, opts ...Option) *Server {
 	return s
 }
 
-// Start -.
+// Start launches the HTTPS server with mandatory TLS.
+// The server will fail to start if TLS cert/key are not configured.
 func (s *Server) Start() {
 	s.eg.Go(func() error {
-		err := s.App.Listen(s.address)
+		s.logger.Info("starting TLS server on %s", s.address)
+
+		err := s.App.ListenTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 		if err != nil {
 			s.notify <- err
 
@@ -93,7 +100,7 @@ func (s *Server) Start() {
 		return nil
 	})
 
-	s.logger.Info("restapi server - Server - Started")
+	s.logger.Info("restapi server - Server - Started (TLS)")
 }
 
 // Notify -.

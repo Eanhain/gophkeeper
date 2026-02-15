@@ -16,6 +16,7 @@ type (
 		PG      PG
 		Swagger Swagger
 		JWT     JWT
+		TLS     TLS
 	}
 
 	// App -.
@@ -49,6 +50,17 @@ type (
 	// JWT -.
 	JWT struct {
 		Secret string `env:"JWT_SECRET,required"`
+	}
+
+	// TLS holds the certificate and key file paths for mandatory TLS.
+	// Both fields are required — the server will not start without them.
+	// This ensures that JWT tokens and all data are always encrypted in transit.
+	//
+	// Generate self-signed certs for development:
+	//   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN=localhost'
+	TLS struct {
+		CertFile string `env:"TLS_CERT_FILE,required"`
+		KeyFile  string `env:"TLS_KEY_FILE,required"`
 	}
 )
 
