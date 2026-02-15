@@ -1,105 +1,836 @@
 basePath: /v1
 definitions:
-  entity.Translation:
+  request.BinarySecret:
     properties:
-      destination:
-        example: en
+      data:
+        example: LS0tLS1CRUdJTi...
         type: string
-      original:
-        example: текст для перевода
+      filename:
+        example: certificate.pem
         type: string
-      source:
-        example: auto
-        type: string
-      translation:
-        example: text for translation
+      mime_type:
+        example: application/x-pem-file
         type: string
     type: object
-  entity.TranslationHistory:
+  request.CardSecret:
     properties:
-      history:
+      brand:
+        example: Visa
+        type: string
+      cardholder:
+        example: John Doe
+        type: string
+      exp_month:
+        example: "12"
+        type: string
+      exp_year:
+        example: "2027"
+        type: string
+      last4:
+        example: "1111"
+        type: string
+      pan:
+        example: "4111111111111111"
+        type: string
+    type: object
+  request.DeleteBinarySecret:
+    properties:
+      filename:
+        example: certificate.pem
+        type: string
+    type: object
+  request.DeleteCardSecret:
+    properties:
+      cardholder:
+        example: John Doe
+        type: string
+    type: object
+  request.DeleteLoginPassword:
+    properties:
+      login:
+        example: admin@example.com
+        type: string
+    type: object
+  request.DeleteTextSecret:
+    properties:
+      title:
+        example: API key
+        type: string
+    type: object
+  request.LoginPassword:
+    properties:
+      label:
+        example: work email
+        type: string
+      login:
+        example: admin@example.com
+        type: string
+      password:
+        example: myP@ssw0rd
+        type: string
+    type: object
+  request.TextSecret:
+    properties:
+      body:
+        example: sk-proj-abc123...
+        type: string
+      title:
+        example: API key
+        type: string
+    type: object
+  request.UserInput:
+    properties:
+      login:
+        example: john_doe
+        type: string
+      password:
+        example: s3cureP@ss
+        type: string
+    type: object
+  response.AllSecrets:
+    properties:
+      binary_secret:
         items:
-          $ref: '#/definitions/entity.Translation'
+          $ref: '#/definitions/response.BinarySecret'
+        type: array
+      card_secret:
+        items:
+          $ref: '#/definitions/response.CardSecret'
+        type: array
+      login_password:
+        items:
+          $ref: '#/definitions/response.LoginPassword'
+        type: array
+      text_secret:
+        items:
+          $ref: '#/definitions/response.TextSecret'
         type: array
     type: object
-  request.Translate:
+  response.BinarySecret:
     properties:
-      destination:
-        example: en
+      data:
+        example: LS0tLS1CRUdJTi...
         type: string
-      original:
-        example: текст для перевода
+      filename:
+        example: certificate.pem
         type: string
-      source:
-        example: auto
+      mime_type:
+        example: application/x-pem-file
         type: string
-    required:
-    - destination
-    - original
-    - source
     type: object
-  response.Error:
+  response.CardSecret:
     properties:
-      error:
-        example: message
+      brand:
+        example: Visa
+        type: string
+      cardholder:
+        example: John Doe
+        type: string
+      exp_month:
+        example: "12"
+        type: string
+      exp_year:
+        example: "2027"
+        type: string
+      last4:
+        example: "1111"
+        type: string
+      pan:
+        example: "4111111111111111"
+        type: string
+    type: object
+  response.LoginPassword:
+    properties:
+      label:
+        example: work email
+        type: string
+      login:
+        example: admin@example.com
+        type: string
+      password:
+        example: myP@ssw0rd
+        type: string
+    type: object
+  response.TextSecret:
+    properties:
+      body:
+        example: sk-proj-abc123...
+        type: string
+      title:
+        example: API key
         type: string
     type: object
 host: localhost:8080
 info:
   contact: {}
-  description: Using a translation service as an example
-  title: Go Clean Template API
+  description: |-
+    GophKeeper — secure vault for passwords, text notes, binary data and bank cards.
+
+    ## Security
+    All connections are encrypted with mandatory TLS.
+    JWT tokens and all data are always protected in transit.
+    Data at rest is encrypted per-user with AES-256-GCM.
+    Encryption keys are derived from user passwords using Argon2id.
+  title: Gophkeeper API
   version: "1.0"
 paths:
-  /translation/do-translate:
+  /api/user/delete-user:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes the currently authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - auth
+  /api/user/login:
     post:
       consumes:
       - application/json
-      description: Translate a text
-      operationId: do-translate
+      description: Authenticates a user by login and password, returns a signed JWT
+        token
       parameters:
-      - description: Set up translation
+      - description: User credentials
         in: body
-        name: request
+        name: input
         required: true
         schema:
-          $ref: '#/definitions/request.Translate'
+          $ref: '#/definitions/request.UserInput'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: token
           schema:
-            $ref: '#/definitions/entity.Translation'
-        "400":
-          description: Bad Request
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
           schema:
-            $ref: '#/definitions/response.Error'
+            additionalProperties:
+              type: string
+            type: object
         "500":
-          description: Internal Server Error
+          description: internal server error
           schema:
-            $ref: '#/definitions/response.Error'
-      summary: Translate
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
       tags:
-      - translation
-  /translation/history:
-    get:
+      - auth
+  /api/user/register:
+    post:
       consumes:
       - application/json
-      description: Show all translation history
-      operationId: history
+      description: Creates a new user account, authenticates it and returns a JWT
+        token
+      parameters:
+      - description: New user credentials
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.UserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: user already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register user
+      tags:
+      - auth
+  /api/user/secret/delete-binary-secret:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a stored binary secret identified by the filename field
+      parameters:
+      - description: Filename identifier to delete
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.DeleteBinarySecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete binary secret
+      tags:
+      - secrets
+  /api/user/secret/delete-card-secret:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a stored card secret identified by the cardholder field
+      parameters:
+      - description: Cardholder identifier to delete
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.DeleteCardSecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete card secret
+      tags:
+      - secrets
+  /api/user/secret/delete-login-password:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a stored login-password secret identified by the login
+        field
+      parameters:
+      - description: Login identifier to delete
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.DeleteLoginPassword'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete login-password
+      tags:
+      - secrets
+  /api/user/secret/delete-text-secret:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a stored text secret identified by the title field
+      parameters:
+      - description: Title identifier to delete
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.DeleteTextSecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete text secret
+      tags:
+      - secrets
+  /api/user/secret/get-all-secrets:
+    get:
+      description: Returns all stored secrets (login-passwords, text, binary, cards)
+        for the current user
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/entity.TranslationHistory'
-        "500":
-          description: Internal Server Error
+            $ref: '#/definitions/response.AllSecrets'
+        "401":
+          description: unauthorized
           schema:
-            $ref: '#/definitions/response.Error'
-      summary: Show history
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all secrets
       tags:
-      - translation
+      - secrets
+  /api/user/secret/get-binary-secret:
+    get:
+      description: Returns all stored binary secrets for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/response.BinarySecret'
+            type: array
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get binary secrets
+      tags:
+      - secrets
+  /api/user/secret/get-card-secret:
+    get:
+      description: Returns all stored card secrets for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/response.CardSecret'
+            type: array
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get card secrets
+      tags:
+      - secrets
+  /api/user/secret/get-login-password:
+    get:
+      description: Returns all stored login-password secrets for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/response.LoginPassword'
+            type: array
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get login-passwords
+      tags:
+      - secrets
+  /api/user/secret/get-text-secret:
+    get:
+      description: Returns all stored text secrets for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/response.TextSecret'
+            type: array
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get text secrets
+      tags:
+      - secrets
+  /api/user/secret/post-binary-secret:
+    post:
+      consumes:
+      - application/json
+      description: Stores a new binary secret (file) for the authenticated user. Data
+        should be base64-encoded.
+      parameters:
+      - description: Binary secret data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.BinarySecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create binary secret
+      tags:
+      - secrets
+  /api/user/secret/post-card-secret:
+    post:
+      consumes:
+      - application/json
+      description: Stores a new bank card secret for the authenticated user
+      parameters:
+      - description: Card secret data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.CardSecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create card secret
+      tags:
+      - secrets
+  /api/user/secret/post-login-password:
+    post:
+      consumes:
+      - application/json
+      description: Stores a new login-password secret for the authenticated user
+      parameters:
+      - description: Login-password data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.LoginPassword'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create login-password
+      tags:
+      - secrets
+  /api/user/secret/post-text-secret:
+    post:
+      consumes:
+      - application/json
+      description: Stores a new text secret for the authenticated user
+      parameters:
+      - description: Text secret data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.TextSecret'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: required fields missing or invalid
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create text secret
+      tags:
+      - secrets
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT token obtained from /api/user/login. Format: "Bearer {token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+schemes:
+- https
 swagger: "2.0"

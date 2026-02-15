@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
 type (
@@ -13,11 +14,9 @@ type (
 		HTTP    HTTP
 		Log     Log
 		PG      PG
-		GRPC    GRPC
-		RMQ     RMQ
-		NATS    NATS
-		Metrics Metrics
 		Swagger Swagger
+		JWT     JWT
+		TLS     TLS
 	}
 
 	// App -.
@@ -43,38 +42,33 @@ type (
 		URL     string `env:"PG_URL,required"`
 	}
 
-	// GRPC -.
-	GRPC struct {
-		Port string `env:"GRPC_PORT,required"`
-	}
-
-	// RMQ -.
-	RMQ struct {
-		ServerExchange string `env:"RMQ_RPC_SERVER,required"`
-		ClientExchange string `env:"RMQ_RPC_CLIENT,required"`
-		URL            string `env:"RMQ_URL,required"`
-	}
-
-	// NATS -.
-	NATS struct {
-		ServerExchange string `env:"NATS_RPC_SERVER,required"`
-		URL            string `env:"NATS_URL,required"`
-	}
-
-	// Metrics -.
-	Metrics struct {
-		Enabled bool `env:"METRICS_ENABLED" envDefault:"true"`
-	}
-
 	// Swagger -.
 	Swagger struct {
 		Enabled bool `env:"SWAGGER_ENABLED" envDefault:"false"`
+	}
+
+	// JWT -.
+	JWT struct {
+		Secret string `env:"JWT_SECRET,required"`
+	}
+
+	// TLS holds the certificate and key file paths for mandatory TLS.
+	// Both fields are required — the server will not start without them.
+	// This ensures that JWT tokens and all data are always encrypted in transit.
+	//
+	// Generate self-signed certs for development:
+	//   openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN=localhost'
+	TLS struct {
+		CertFile string `env:"TLS_CERT_FILE,required"`
+		KeyFile  string `env:"TLS_KEY_FILE,required"`
 	}
 )
 
 // NewConfig returns app config.
 func NewConfig() (*Config, error) {
 	cfg := &Config{}
+	godotenv.Load("./.env")
+	godotenv.Load("../../.env")
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
 	}

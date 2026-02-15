@@ -1,17 +1,17 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "Using a translation service as an example",
-        "title": "Go Clean Template API",
+        "description": "GophKeeper — secure vault for passwords, text notes, binary data and bank cards.\n\n## Security\nData at rest is encrypted per-user with AES-256-GCM.\nEncryption keys are derived from user passwords using Argon2id.\nTransport security is provided by RSA-OAEP payload encryption.\nRequest bodies are encrypted by the client with the server's RSA public key.",
+        "title": "Gophkeeper API",
         "contact": {},
         "version": "1.0"
     },
     "host": "localhost:8080",
     "basePath": "/v1",
     "paths": {
-        "/translation/do-translate": {
-            "post": {
-                "description": "Translate a text",
+        "/api/user/delete-user": {
+            "delete": {
+                "description": "Deletes the currently authenticated user's account",
                 "consumes": [
                     "application/json"
                 ],
@@ -19,46 +19,103 @@
                     "application/json"
                 ],
                 "tags": [
-                    "translation"
+                    "auth"
                 ],
-                "summary": "Translate",
-                "operationId": "do-translate",
+                "summary": "Delete user",
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/login": {
+            "post": {
+                "description": "Authenticates a user by login and password, returns a signed JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
                 "parameters": [
                     {
-                        "description": "Set up translation",
-                        "name": "request",
+                        "description": "User credentials",
+                        "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.Translate"
+                            "$ref": "#/definitions/request.UserInput"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "token",
                         "schema": {
-                            "$ref": "#/definitions/entity.Translation"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/response.Error"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "internal server error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
             }
         },
-        "/translation/history": {
-            "get": {
-                "description": "Show all translation history",
+        "/api/user/register": {
+            "post": {
+                "description": "Creates a new user account, authenticates it and returns a JWT token",
                 "consumes": [
                     "application/json"
                 ],
@@ -66,90 +123,1141 @@
                     "application/json"
                 ],
                 "tags": [
-                    "translation"
+                    "auth"
                 ],
-                "summary": "Show history",
-                "operationId": "history",
+                "summary": "Register user",
+                "parameters": [
+                    {
+                        "description": "New user credentials",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.UserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "user already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/secret/delete-binary-secret": {
+            "delete": {
+                "description": "Deletes a stored binary secret identified by the filename field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Delete binary secret",
+                "parameters": [
+                    {
+                        "description": "Filename identifier to delete",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.DeleteBinarySecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/delete-card-secret": {
+            "delete": {
+                "description": "Deletes a stored card secret identified by the cardholder field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Delete card secret",
+                "parameters": [
+                    {
+                        "description": "Cardholder identifier to delete",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.DeleteCardSecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/delete-login-password": {
+            "delete": {
+                "description": "Deletes a stored login-password secret identified by the login field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Delete login-password",
+                "parameters": [
+                    {
+                        "description": "Login identifier to delete",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.DeleteLoginPassword"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/delete-text-secret": {
+            "delete": {
+                "description": "Deletes a stored text secret identified by the title field",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Delete text secret",
+                "parameters": [
+                    {
+                        "description": "Title identifier to delete",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.DeleteTextSecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/get-all-secrets": {
+            "get": {
+                "description": "Returns all stored secrets (login-passwords, text, binary, cards) for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Get all secrets",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/entity.TranslationHistory"
+                            "$ref": "#/definitions/response.AllSecrets"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "internal server error",
                         "schema": {
-                            "$ref": "#/definitions/response.Error"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/get-binary-secret": {
+            "get": {
+                "description": "Returns all stored binary secrets for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Get binary secrets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.BinarySecret"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/get-card-secret": {
+            "get": {
+                "description": "Returns all stored card secrets for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Get card secrets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.CardSecret"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/get-login-password": {
+            "get": {
+                "description": "Returns all stored login-password secrets for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Get login-passwords",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.LoginPassword"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/get-text-secret": {
+            "get": {
+                "description": "Returns all stored text secrets for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Get text secrets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/response.TextSecret"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/post-binary-secret": {
+            "post": {
+                "description": "Stores a new binary secret (file) for the authenticated user. Data should be base64-encoded.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Create binary secret",
+                "parameters": [
+                    {
+                        "description": "Binary secret data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.BinarySecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/post-card-secret": {
+            "post": {
+                "description": "Stores a new bank card secret for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Create card secret",
+                "parameters": [
+                    {
+                        "description": "Card secret data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.CardSecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/post-login-password": {
+            "post": {
+                "description": "Stores a new login-password secret for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Create login-password",
+                "parameters": [
+                    {
+                        "description": "Login-password data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.LoginPassword"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/user/secret/post-text-secret": {
+            "post": {
+                "description": "Stores a new text secret for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "secrets"
+                ],
+                "summary": "Create text secret",
+                "parameters": [
+                    {
+                        "description": "Text secret data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.TextSecret"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "required fields missing or invalid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ]
             }
         }
     },
     "definitions": {
-        "entity.Translation": {
+        "request.BinarySecret": {
             "type": "object",
             "properties": {
-                "destination": {
+                "data": {
                     "type": "string",
-                    "example": "en"
+                    "example": "LS0tLS1CRUdJTi..."
                 },
-                "original": {
+                "filename": {
                     "type": "string",
-                    "example": "текст для перевода"
+                    "example": "certificate.pem"
                 },
-                "source": {
+                "mime_type": {
                     "type": "string",
-                    "example": "auto"
-                },
-                "translation": {
-                    "type": "string",
-                    "example": "text for translation"
+                    "example": "application/x-pem-file"
                 }
             }
         },
-        "entity.TranslationHistory": {
+        "request.CardSecret": {
             "type": "object",
             "properties": {
-                "history": {
+                "brand": {
+                    "type": "string",
+                    "example": "Visa"
+                },
+                "cardholder": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "exp_month": {
+                    "type": "string",
+                    "example": "12"
+                },
+                "exp_year": {
+                    "type": "string",
+                    "example": "2027"
+                },
+                "last4": {
+                    "type": "string",
+                    "example": "1111"
+                },
+                "pan": {
+                    "type": "string",
+                    "example": "4111111111111111"
+                }
+            }
+        },
+        "request.DeleteBinarySecret": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string",
+                    "example": "certificate.pem"
+                }
+            }
+        },
+        "request.DeleteCardSecret": {
+            "type": "object",
+            "properties": {
+                "cardholder": {
+                    "type": "string",
+                    "example": "John Doe"
+                }
+            }
+        },
+        "request.DeleteLoginPassword": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                }
+            }
+        },
+        "request.DeleteTextSecret": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "example": "API key"
+                }
+            }
+        },
+        "request.LoginPassword": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "work email"
+                },
+                "login": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "myP@ssw0rd"
+                }
+            }
+        },
+        "request.TextSecret": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "example": "sk-proj-abc123..."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "API key"
+                }
+            }
+        },
+        "request.UserInput": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string",
+                    "example": "john_doe"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "s3cureP@ss"
+                }
+            }
+        },
+        "response.AllSecrets": {
+            "type": "object",
+            "properties": {
+                "binary_secret": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/entity.Translation"
+                        "$ref": "#/definitions/response.BinarySecret"
+                    }
+                },
+                "card_secret": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.CardSecret"
+                    }
+                },
+                "login_password": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.LoginPassword"
+                    }
+                },
+                "text_secret": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.TextSecret"
                     }
                 }
             }
         },
-        "request.Translate": {
+        "response.BinarySecret": {
             "type": "object",
-            "required": [
-                "destination",
-                "original",
-                "source"
-            ],
             "properties": {
-                "destination": {
+                "data": {
                     "type": "string",
-                    "example": "en"
+                    "example": "LS0tLS1CRUdJTi..."
                 },
-                "original": {
+                "filename": {
                     "type": "string",
-                    "example": "текст для перевода"
+                    "example": "certificate.pem"
                 },
-                "source": {
+                "mime_type": {
                     "type": "string",
-                    "example": "auto"
+                    "example": "application/x-pem-file"
                 }
             }
         },
-        "response.Error": {
+        "response.CardSecret": {
             "type": "object",
             "properties": {
-                "error": {
+                "brand": {
                     "type": "string",
-                    "example": "message"
+                    "example": "Visa"
+                },
+                "cardholder": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "exp_month": {
+                    "type": "string",
+                    "example": "12"
+                },
+                "exp_year": {
+                    "type": "string",
+                    "example": "2027"
+                },
+                "last4": {
+                    "type": "string",
+                    "example": "1111"
+                },
+                "pan": {
+                    "type": "string",
+                    "example": "4111111111111111"
                 }
             }
+        },
+        "response.LoginPassword": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "work email"
+                },
+                "login": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "myP@ssw0rd"
+                }
+            }
+        },
+        "response.TextSecret": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "example": "sk-proj-abc123..."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "API key"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "JWT token obtained from /api/user/login. Format: \"Bearer {token}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

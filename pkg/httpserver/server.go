@@ -1,4 +1,4 @@
-// Package httpserver implements HTTP server.
+// Package httpserver implements HTTPS server with mandatory TLS.
 package httpserver
 
 import (
@@ -6,14 +6,21 @@ import (
 	"errors"
 	"time"
 
-	"github.com/evrone/go-clean-template/pkg/logger"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/sync/errgroup"
 )
 
+type LoggerI interface {
+	Debug(message interface{}, args ...interface{})
+	Info(message string, args ...interface{})
+	Warn(message string, args ...interface{})
+	Error(message interface{}, args ...interface{})
+	Fatal(message interface{}, args ...interface{})
+}
+
 const (
-	_defaultAddr            = ":80"
+	_defaultAddr            = ":443"
 	_defaultReadTimeout     = 5 * time.Second
 	_defaultWriteTimeout    = 5 * time.Second
 	_defaultShutdownTimeout = 3 * time.Second
@@ -33,11 +40,15 @@ type Server struct {
 	writeTimeout    time.Duration
 	shutdownTimeout time.Duration
 
-	logger logger.Interface
+	// TLS certificate and private key file paths (mandatory).
+	tlsCertFile string
+	tlsKeyFile  string
+
+	logger LoggerI
 }
 
 // New -.
-func New(l logger.Interface, opts ...Option) *Server {
+func New(l LoggerI, opts ...Option) *Server {
 	group, ctx := errgroup.WithContext(context.Background())
 	group.SetLimit(1) // Run only one goroutine
 
@@ -71,10 +82,13 @@ func New(l logger.Interface, opts ...Option) *Server {
 	return s
 }
 
-// Start -.
+// Start launches the HTTPS server with mandatory TLS.
+// The server will fail to start if TLS cert/key are not configured.
 func (s *Server) Start() {
 	s.eg.Go(func() error {
-		err := s.App.Listen(s.address)
+		s.logger.Info("starting TLS server on %s", s.address)
+
+		err := s.App.ListenTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 		if err != nil {
 			s.notify <- err
 
@@ -86,7 +100,7 @@ func (s *Server) Start() {
 		return nil
 	})
 
-	s.logger.Info("restapi server - Server - Started")
+	s.logger.Info("restapi server - Server - Started (TLS)")
 }
 
 // Notify -.

@@ -3,7 +3,7 @@
 .vscode
 
 # Config
-.env
+# .env
 
 # Binaries for programs and plugins
 *.exe
@@ -23,3 +23,6 @@ bin/
 vendor/
 
 coverage.txt
+
+команды
+

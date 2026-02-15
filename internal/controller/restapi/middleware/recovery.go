@@ -5,12 +5,15 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/evrone/go-clean-template/pkg/logger"
+	"github.com/Eanhain/gophkeeper/domain"
 	"github.com/gofiber/fiber/v2"
 	fiberRecover "github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-func buildPanicMessage(ctx *fiber.Ctx, err interface{}) string {
+// buildPanicMessage constructs a human-readable string that includes
+// the client IP, HTTP method, URL, panic value and the full goroutine
+// stack trace. This string is then handed to the logger.
+func buildPanicMessage(ctx *fiber.Ctx, err any) string {
 	var result strings.Builder
 
 	result.WriteString(ctx.IP())
@@ -24,13 +27,18 @@ func buildPanicMessage(ctx *fiber.Ctx, err interface{}) string {
 	return result.String()
 }
 
-func logPanic(l logger.Interface) func(c *fiber.Ctx, err interface{}) {
+// logPanic returns a Fiber-compatible StackTraceHandler that logs
+// the panic message via the application logger at ERROR level.
+func logPanic(l domain.LoggerI) func(c *fiber.Ctx, err interface{}) {
 	return func(ctx *fiber.Ctx, err interface{}) {
 		l.Error(buildPanicMessage(ctx, err))
 	}
 }
 
-func Recovery(l logger.Interface) func(c *fiber.Ctx) error {
+// Recovery returns a Fiber middleware that catches panics in handlers,
+// logs the stack trace and returns HTTP 500 to the client instead of
+// crashing the entire server process.
+func Recovery(l domain.LoggerI) func(c *fiber.Ctx) error {
 	return fiberRecover.New(fiberRecover.Config{
 		EnableStackTrace:  true,
 		StackTraceHandler: logPanic(l),
